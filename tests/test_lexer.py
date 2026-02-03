@@ -89,4 +89,3 @@ def test_086():
         assert False, "Expected ErrorToken but no exception was raised"
     except Exception as e:
         assert str(e) == "Error Token ["
-

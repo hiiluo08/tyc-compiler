@@ -31,7 +31,7 @@ options{
 
 //---------------PROGRAM STRUCTURE------------------
 program: 
-    (struct_decl | func_decl)* EOF
+    (struct_decl | func_decl)+ EOF
     ;
 
 //---------------STRUCT DECLARATION-----------------
@@ -67,8 +67,12 @@ type:
 
 //---------------STATEMENT--------------------------
 stmt:
-    var_dec_stmt | block_stmt | assign_stmt | if_stmt | while_stmt
+    var_dec_stmt | block_stmt | if_stmt | while_stmt
     | for_stmt | switch_stmt | break_stmt | continue_stmt | return_stmt | expr_stmt
+    ;
+
+expr_stmt:
+    expr SEMI
     ;
 
 var_dec_stmt:
@@ -88,13 +92,9 @@ block_stmt:
     LBRACE (stmt)* RBRACE
     ;
 
-assign_stmt:
-    left_value ASSIGN expr SEMI
-    ;
-
-left_value:
-    ID (MEM_ACCESS ID)*
-    ;
+//assign_stmt:
+//    left_value ASSIGN expr SEMI
+//    ;
 
 
 if_stmt:
@@ -106,7 +106,7 @@ while_stmt:
     ;
 
 for_stmt:
-    FOR LPAREN init SEMI expr? SEMI expr? RPAREN stmt
+    FOR LPAREN init? SEMI expr? SEMI expr? RPAREN stmt+
     ;
 
 init:
@@ -142,9 +142,6 @@ return_stmt:
     RETURN expr? SEMI
     ;
 
-expr_stmt:
-    expr SEMI
-    ;
 
 break_stmt:
     BREAK SEMI
@@ -157,6 +154,10 @@ expr:
 
 assignment_expr:
     logical_OR_expr | left_value ASSIGN assignment_expr
+    ;
+
+left_value:
+    ID (MEM_ACCESS ID)*
     ;
 
 logical_OR_expr:
@@ -192,29 +193,30 @@ prefix_expr:
     (INC | DEC) prefix_expr | postfix_expr
     ;
 
-//postfix_expr:
-//    postfix_expr (INC | DEC ) | mem_access_expr
-//    ;
 
 postfix_expr:
-    primary_expr postfix_tail
+    postfix_expr (INC | DEC) | mem_access_expr
     ;
 
-postfix_tail:
-    (MEM_ACCESS ID | INC | DEC) postfix_tail
-    | /* epsilon */
+mem_access_expr:
+    mem_access_expr MEM_ACCESS ID | primary_expr
     ;
 
-//mem_access_expr:
-//    mem_access_expr (MEM_ACCESS ID) | primary_expr
-//    ;
 
 primary_expr:
     ID | literal | LPAREN expr RPAREN | function_call
     ;
 
 literal:
-    INT | FLOAT | STRING
+    INT | FLOAT | STRING | struct_type
+    ;
+
+struct_type:
+    LBRACE expr_list? RBRACE
+    ;
+
+expr_list:
+    expr (COMMA expr)*
     ;
 
 function_call:

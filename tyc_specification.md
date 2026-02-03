@@ -536,14 +536,6 @@ or
 
 Assignment expressions are right-associative, allowing chained assignments such as `x = y = z = 10;`, which is parsed as `x = (y = (z = 10));`. Assignment expressions can be used in expression contexts, for example: `int y = (x = 5) + 7;`.
 
-### Primary Expression
-
-Primary expressions include:
-- **Identifiers**: `x`, `counter`, `myVar`
-- **Literals**: `123`, `3.14`, `"hello"`
-- **Parenthesized expressions**: `(x + y)`
-- **Member access**: `structVar.memberName`
-
 ### Operator Precedence and Associativity
 
 The order of precedence for operators is listed from highest to lowest:
