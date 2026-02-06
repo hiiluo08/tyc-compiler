@@ -31,7 +31,7 @@ options{
 
 //---------------PROGRAM STRUCTURE------------------
 program: 
-    (struct_decl | func_decl)+ EOF
+    (struct_decl | func_decl)* EOF
     ;
 
 //---------------STRUCT DECLARATION-----------------
@@ -92,10 +92,6 @@ block_stmt:
     LBRACE (stmt)* RBRACE
     ;
 
-//assign_stmt:
-//    left_value ASSIGN expr SEMI
-//    ;
-
 
 if_stmt:
     IF LPAREN expr RPAREN stmt (ELSE stmt)?
@@ -106,11 +102,29 @@ while_stmt:
     ;
 
 for_stmt:
-    FOR LPAREN init? SEMI expr? SEMI expr? RPAREN stmt+
+    FOR LPAREN init? SEMI expr? SEMI update? RPAREN stmt+
     ;
 
 init:
     AUTO ID (ASSIGN expr)? |  type ID (ASSIGN expr)? | left_value ASSIGN expr
+    ;
+
+update:
+    left_value ASSIGN expr | prefix_update | postfix_update
+    ;
+
+prefix_update:
+    (INC | DEC) prefix_update 
+    | (INC | DEC) left_value
+    | (INC | DEC) LPAREN left_value RPAREN
+    | (INC | DEC) LPAREN update RPAREN
+    ;
+
+postfix_update:
+    postfix_update (INC | DEC)
+    | left_value (INC | DEC)
+    | LPAREN left_value RPAREN (INC | DEC)
+    | LPAREN update RPAREN (INC | DEC)
     ;
 
 
@@ -123,12 +137,9 @@ switch_section:
     ;
 
 case_block:
-    CASE case_expr COLON stmt*
+    CASE expr COLON stmt*
     ;
 
-case_expr:
-    (ADD | SUB)? INT | LPAREN expr RPAREN 
-    ;
 
 default_block:
     DEFAULT COLON stmt*
@@ -147,17 +158,21 @@ break_stmt:
     BREAK SEMI
     ;
 
+left_value:
+    ID (MEM_ACCESS ID)*
+    ;
+
 //---------------------EXPRESSION------------------------
 expr:
     assignment_expr
     ;
 
 assignment_expr:
-    logical_OR_expr | left_value ASSIGN assignment_expr
+    logical_OR_expr | assignable_expr ASSIGN assignment_expr
     ;
 
-left_value:
-    ID (MEM_ACCESS ID)*
+assignable_expr:
+    postfix_expr MEM_ACCESS ID | ID
     ;
 
 logical_OR_expr:
@@ -319,7 +334,7 @@ ID:
     (LETTER | '_')(LETTER | DIGIT | '_')*
     ;
 
-WS : [ \t\r\n]+ -> skip ; // skip spaces, tabs
+WS : [ \t\r\n\f]+ -> skip ; // skip spaces, tabs
 
 LINE_COMMENT: 
     '//' ~[\r\n]* -> skip
