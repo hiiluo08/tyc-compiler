@@ -1,9 +1,9 @@
-# """
-# Parser test cases for TyC compiler
-# Comprehensive test suite covering all syntactic structures
-# """
-# import pytest
-# from tests.utils import Parser
+"""
+Parser test cases for TyC compiler
+Comprehensive test suite covering all syntactic structures
+"""
+import pytest
+from tests.utils import Parser
 
 # # ============================================================================
 # # 1. PROGRAM STRUCTURE & DECLARATIONS
@@ -115,8 +115,6 @@
 
 # def test_022_struct_missing_semicolon_end():
 #     source = "struct A { int x; } void main() {}"
-#     # Parser might consume struct and fail on 'void' if ';' is missing
-#     # or expect EOF. TyC struct requires ';' after '}'
 #     assert Parser(source).parse() == "Error on line 1 col 20: void"
 
 # def test_023_struct_nested_error():
@@ -156,12 +154,7 @@
 #     assert Parser(source).parse() == "success"
 
 # def test_031_var_decl_multiple_same_line_error():
-#     # Spec doesn't explicitly forbid `int x, y;` but examples show one per line.
-#     # Standard C allows it. Spec: "<type> <identifier>"
-#     # If grammar is "type ID (ASSIGN expr)? SEMI", then "int x, y;" is invalid.
-#     # Let's assume strict grammar from spec: "<type> <identifier>"
 #     source = "void main() { int x, y; }"
-#     # Based on existing test_024, this is an Error.
 #     assert Parser(source).parse() == "Error on line 1 col 19: ,"
 
 # # ============================================================================
@@ -205,17 +198,10 @@
 #     assert Parser(source).parse() == "Error on line 1 col 17: 1"
 
 # def test_040_if_empty_body_error():
-#     # "if (expr) stmt". Is empty string a stmt? No. ";" is an expression statement (invalid expr?) 
-#     # Or strict Stmt rule? Spec: "A semicolon (;) by itself does not constitute a valid statement"
-#     # So `if (x) ;` should be Error?
 #     source = "void main() { if (x) ; }"
-#     # Based on Spec: "; by itself does not constitute a valid statement".
-#     # So this should check if Empty Statement is supported.
-#     # Usually parsers allow it, but TyC spec says NO.
 #     assert Parser(source).parse() == "Error on line 1 col 21: ;"
 
 # def test_041_dangling_else_associativity():
-#     # Should associate with nearest if
 #     source = "void main() { if (a) if (b) s1; else s2; }"
 #     assert Parser(source).parse() == "success"
 
@@ -365,7 +351,6 @@
 #     assert Parser(source).parse() == "success"
 
 # def test_068_expr_logical_precedence():
-#     # && higher than ||
 #     source = "void main() { bool = a && b || c && d; }"
 #     assert Parser(source).parse() == "success"
 
@@ -415,22 +400,8 @@
 #     assert Parser(source).parse() == "success"
 
 # def test_078_method_like_call_error():
-#     # TyC strict: <identifier>(args) for calls.
-#     # p.foo() might not be valid if member access must result in struct member?
-#     # Spec: "Struct members can be struct types... struct members are accessed using dot".
-#     # Spec: Function declaration is top level. Structs have data members.
-#     # So `obj.method()` is NOT valid syntax in TyC (no methods).
 #     source = "void main() { p.foo(); }"
-#     # Parser should flag this if grammar restricts postfix to `ID ( args )`
-#     # However, if grammar is `expr ( args )`, then `p.foo` is an expr.
-#     # But `p.foo` refers to a member. If member is function pointer? TyC doesn't have func pointers.
-#     # So `p.foo()` is semantically invalid, but SYNTACTICALLY?
-#     # Usually `expr DOT ID` is an l-value. `expr LPAREN ...` is a call.
-#     # If grammar allows `expression '(' arg_list ')'`, and `expression` includes `expr '.' ID`, then it parses.
-#     # But TyC spec says: "Function call ... has the form: <identifier>(<argument_list>)".
-#     # It strictly says `<identifier>(...)`, NOT `<expression>(...)`.
-#     # So `p.foo()` should be a SYNTAX ERROR.
-#     assert Parser(source).parse() == "Error on line 1 col 19: ("
+#     assert Parser(source).parse() == "success"
 
 # # ============================================================================
 # # 15. EXPRESSIONS - ASSIGNMENT
@@ -450,9 +421,7 @@
 
 # def test_082_assign_to_expr_error():
 #     source = "void main() { (a+b) = 5; }"
-#     # Syntax error: LHS of assignment must be l-value (ID or member access)
-#     # Spec says: "<identifier> = <expr>" or "<member_access> = <expr>"
-#     assert Parser(source).parse() == "Error on line 1 col 20: ="
+#     assert Parser(source).parse() == "success"
 
 # # ============================================================================
 # # 16. LITERALS & STRUCT INIT
@@ -460,12 +429,10 @@
 
 # def test_083_literals_in_expr():
 #     source = "void main() { x = 1 + 2.5 + \"str\"; }" 
-#     # Semantically wrong, but syntactically valid expression
 #     assert Parser(source).parse() == "success"
 
 # def test_084_struct_init_empty():
-#     source = "void main() { Point p = {}; }" # Spec allows empty? "or empty for an empty struct"
-#     # Wait, "comma-separated list ... or empty". So {} is valid.
+#     source = "void main() { Point p = {}; }"
 #     assert Parser(source).parse() == "success"
 
 # def test_085_struct_init_values():
@@ -507,7 +474,6 @@
 #     assert Parser(source).parse() == "success"
 
 # def test_089_array_access_error():
-#     # TyC has no arrays
 #     source = "void main() { x[0] = 1; }"
 #     assert Parser(source).parse() == "Error Token ["
 
@@ -538,12 +504,10 @@
 #     assert Parser(source).parse() == "success"
 
 # def test_094_return_expr_mismatch_syntax():
-#     # Parser accepts any expr in return
 #     source = "void main() { return 1+2*3; }"
 #     assert Parser(source).parse() == "success"
 
 # def test_095_struct_decl_inside_func_error():
-#     # Nesting check
 #     source = "void main() { struct A { int x; }; }"
 #     assert Parser(source).parse() == "Error on line 1 col 14: struct"
 
@@ -1123,8 +1087,8 @@
 #     run_parser_test("88", source, expected)
 
 # def test_89():
-#     source = "void main(){ [] }"
-#     expected = "Error Token ["
+#     source = "void main(){ {} }"
+#     expected = "success"
 #     run_parser_test("89", source, expected)
 
 # def test_90():
@@ -1304,7 +1268,7 @@
 
 # def test_125():
 #     source = "void main(){ for(a = a + b; true; false) break; }"
-#     expected = "Error on line 1 col 39: )"
+#     expected = "success"
 #     run_parser_test("125", source, expected)
 
 # def test_126():
@@ -1853,1286 +1817,2041 @@
 #     expected = "success"
 #     run_parser_test("230", source, expected)
 
-"""
-Parser test cases for TyC compiler
-TODO: Implement 100 test cases for parser
-"""
+# def test_231():
+#     source = "void main() { a.b; }"
+#     expected = "success"
+#     run_parser_test("231", source, expected)
 
-import string
-import pytest
-from tests.utils import Parser
-import os
+# def test_232():
+#     source = "void main() { a.b.c; }"
+#     expected = "success"
+#     run_parser_test("232", source, expected)
 
-"""
-Parser test cases for TyC compiler
-Each test_* function represents ONE test case.
-Expected output is embedded directly in code.
-Actual output is written to .txt file per test.
-"""
+# def test_233():
+#     source = "void main() { foo().bar; }"
+#     expected = "success"
+#     run_parser_test("233", source, expected)
 
-# BASE_DIR = os.path.dirname(__file__)
-# OUTPUT_DIR = os.path.join(BASE_DIR, "output", "parser")
+# def test_234():
+#     source = "void main() { a.b(); }"
+#     expected = "success"
+#     run_parser_test("234", source, expected)
 
-def run_parser_test(test_name: str, source: str, expected: str, n_match: bool = False):
-    parser = Parser(source)
-    output = parser.parse()
+# def test_235():
+#     source = "void main() { a().b().c; }"
+#     expected = "success"
+#     run_parser_test("235", source, expected)
 
-    # # Write output to file
-    # output_path = os.path.join(OUTPUT_DIR, f"{test_name}.txt")
-    # with open(output_path, "w", encoding="utf-8") as f:
-    #     f.write(output)
+# def test_236():
+#     source = "void main() { x.y++; }"
+#     expected = "success"
+#     run_parser_test("236", source, expected)
 
-    assert output == expected, f"Output: {output}. Expected: {expected}"
+# def test_237():
+#     source = "void main() { f()++; }"
+#     expected = "success"
+#     run_parser_test("237", source, expected)
 
-"""
-1 - 15 Declaration (Var and Struct)
-16 - 21 Switch
-22 - 30 For loop 
-31 - 45 Assignment Expression
-46 - 55 If Else
-56 - 69 Function decl, Function call
-70 - 105 Free-For-All (AI gen)
-"""
+# def test_238():
+#     source = "void main() { foo().bar.baz()++; }"
+#     expected = "success"
+#     run_parser_test("238", source, expected)
 
-def test_1():
+# def test_239():
+#     source = "void main() { for(;;){} }"
+#     expected = "success"
+#     run_parser_test("239", source, expected)
+
+# def test_240():
+#     source = "void main() { for(i=0;;){} }"
+#     expected = "success"
+#     run_parser_test("240", source, expected)
+
+# def test_241():
+#     source = "void main() { for(auto i=0; i<10; i++){} }"
+#     expected = "success"
+#     run_parser_test("241", source, expected)
+
+# def test_242():
+#     source = "void main() { for(int i=0; i<10; i++){} }"
+#     expected = "success"
+#     run_parser_test("242", source, expected)
+
+# def test_243():
+#     source = "void main() { for(; i<10; i++){} }"
+#     expected = "success"
+#     run_parser_test("243", source, expected)
+
+# def test_244():
+#     source = "void main() { for(;; i++){} }"
+#     expected = "success"
+#     run_parser_test("244", source, expected)
+
+# def test_245():
+#     source = "void main() { for(3; 1; ){} }"
+#     expected = "success"
+#     run_parser_test("245", source, expected)
+
+# def test_246():
+#     source = "void main() { switch(x){} }"
+#     expected = "success"
+#     run_parser_test("246", source, expected)
+
+# def test_247():
+#     source = "void main() { switch(x){ case 1: break; } }"
+#     expected = "success"
+#     run_parser_test("247", source, expected)
+
+# def test_248():
+#     source = "void main() { switch(x){ default: break; } }"
+#     expected = "success"
+#     run_parser_test("248", source, expected)
+
+# def test_249():
+#     source = "void main() { switch(x){ case 1+2: break; case (4*2): break; case -1: break; } }"
+#     expected = "success"
+#     run_parser_test("249", source, expected)
+
+# def test_250():
+#     source = "void main() { for(;; }"
+#     expected = "Error on line 1 col 21: }" # Expecting RPAREN but found LBRACE '}' or EOF? Grammar: FOR LPAREN ... RPAREN. "for(;; }" -> missing RPAREN.
+#     # Actually, for(;; } -> 
+#     # FOR LPAREN SEMI SEMI RPAREN (stmt).
+#     # Input: for(;; }
+#     # Tokens: FOR, LPAREN, SEMI, SEMI, RBRACE? No, } is RBRACE.
+#     # Wait, input is "for(;; }".
+#     # Syntactically: FOR '(' ';' ';' '}' ...
+#     # It expects ')' after second ';' (if expr is empty) or expr then ')'.
+#     # If it sees '}', it's error.
+#     # "Error on line 1 col 22: }" seems plausible.
+#     run_parser_test("250", source, expected)
+
+# def test_251():
+#     source = "void main() { switch(x){ case 1 break; } }"
+#     expected = "Error on line 1 col 32: break" # Colon missing.
+#     run_parser_test("251", source, expected)
+
+# def test_252():
+#     source = "void main() { string s = \"abc; }"
+#     expected = "Unclosed String: abc; }" # Based on UNCLOSE_STRING rule in TyC.g4: "raise UncloseString(result.text[1:])"
+#     # Wait, Parser() catches Exception e and returns str(e).
+#     # UncloseString exception message?
+#     # I need to know what UncloseString class does.
+#     # lexererr.py import *
+#     # TyC.g4: raise UncloseString(result.text[1:])
+#     # If UncloseString inherits from Exception, str(e) will be the message.
+#     # So "abc; }"
+#     run_parser_test("252", source, "Unclosed String: abc; }")
+
+# def test_253():
+#     source = "void main() { string s = \"\\x\"; }"
+#     expected = "Illegal Escape In String: \\x" # Guessing class name/message
+#     run_parser_test("253", source, "Illegal Escape In String: \\x")
+
+# def test_254():
+#     source = "void main() { (a+b; }"
+#     expected = "Error on line 1 col 18: ;" # Expecting RPAREN
+#     run_parser_test("254", source, expected)
+
+# def test_255():
+#     # Multiple default in switch (reject) - Parser usually accepts unless grammar restricted.
+#     # Assuming standard grammar: switch_section* -> (case_block | default_block)*
+#     # So parser accepts multiple defaults.
+#     source = "void main() { switch(x){ default: break; default: break; } }"
+#     expected = "Error on line 1 col 41: default" 
+#     run_parser_test("255", source, expected)
+
+# def test_256():
+#     # Relational on LHS of assignment (parser may accept)
+#     source = "void main() { (a<b) = c; }"
+#     expected = "success"
+#     run_parser_test("256", source, expected)
+
+# def test_257():
+#     # Assignment to literal (parser may accept)
+#     source = "void main() { 3 = x; }"
+#     expected = "success"
+#     run_parser_test("257", source, expected)
+
+# def test_258():
+#     # Case with identifier or float (parser may accept)
+#     # Grammar usually: CASE expr COLON stmt*
+#     # So 'x' and '1.5' are expr.
+#     source = "void main() { switch(x){ case y: break; case 1.5: break; } }"
+#     expected = "success"
+#     run_parser_test("258", source, expected)
+
+# def test_259():
+#     # Struct literal on LHS of assignment (parser may accept)
+#     source = "void main() { {1,2} = p; }"
+#     expected = "success"
+#     run_parser_test("259", source, expected)
+
+# def test_260():
+#     # For init with invalid expression e.g. i || 1 (reject? No, likely success in parser)
+#     # i || 1 is a valid expression.
+#     source = "void main() { for(i||1;;){} }"
+#     expected = "success"
+#     run_parser_test("260", source, expected)
+
+# def test_261():
+#     # Complex: Structs + functions (createPoint, distance)
+#     source = """
+#     struct Point { float x; float y; };
+#     Point createPoint(float x, float y) {
+#         Point p = {x, y};
+#         return p;
+#     }
+#     float distance(Point p1, Point p2) {
+#         return sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y));
+#     }
+#     void main() {
+#         Point p = createPoint(1.0, 2.0);
+#         float d = distance(p, {0.0, 0.0});
+#     }
+#     """
+
+#     expected = "success"
+#     run_parser_test("261", source, expected)
+
+# def test_262():
+#     # Chained member and assignment
+#     source = "void main() { a.b.c = d = e.f; }"
+#     expected = "success"
+#     run_parser_test("262", source, expected)
+
+# def test_263():
+#     # Float literal with member access
+#     # Does lexer support 1.5.toString()?
+#     # 1.5 is FLOAT. .toString() is MEM_ACCESS ID.
+#     # It depends if 1.5. is greedy match for float?
+#     source = "void main() { 1.5.toString(); }"
+#     expected = "success"
+#     run_parser_test("263", source, expected)
+
+# def test_264():
+#     # String literal postfix (e.g. "abc".length())
+#     source = "void main() { \"abc\".length(); }"
+#     expected = "success"
+#     run_parser_test("264", source, expected)
+
+# def test_265():
+#     # Prefix/Postfix on function call
+#     source = "void main() { ++f(); f()--; }"
+#     expected = "success"
+#     run_parser_test("265", source, expected)
+
+# def test_266():
+#     # Return f();
+#     source = "void main() { return f(); }"
+#     expected = "success"
+#     run_parser_test("266", source, expected)
+
+# def test_267():
+#     # Struct literal in comparison
+#     source = "void main() { if ({1,2} == p) {} }"
+#     expected = "success"
+#     run_parser_test("267", source, expected)
+
+# def test_268():
+#     # Case with constant expression (unary plus)
+#     source = "void main() { switch(x) { case +5: break; } }"
+#     expected = "success"
+#     run_parser_test("268", source, expected)
+
+
+def test_001():
     source = """
-    void main(){
-        int a;
-    }
-    """
-    expected = "success"
-    run_parser_test("1", source, expected)
-
-def test_2():
-    source = """
-    void main(){
-    Person person2 = {\"John\", 25, 1.75, {}};
-    return 0;
-    }
-    """
-    expected = "success"
-    run_parser_test("2", source, expected)
-
-def test_3():
-    source = """
-    void main(){
-    Person person2 = {Point p2 = {10, 20},  25, 1.75};
-    }
-    """
-    expected = "Error on line 3 col 28: p2"
-    run_parser_test("3", source, expected)
-
-def test_4():
-    source = """
-    void main(){
-    Person person2 = {};
-    }
-    """
-    expected = "success"
-    run_parser_test("4", source, expected)
-
-def test_5():
-    source = """
-    void main(){
-    Person person2 = {a.x = ++jk(kratos)};
-    }
-    """
-    expected = "success"
-    run_parser_test("5", source, expected)
-
-def test_6():
-    source = """
-    void main(){
-    Person person2 = {p2, 1, "let's go"};
-    }
-    """
-    expected = "success"
-    run_parser_test("6", source, expected)  
-
-def test_7():
-    source = """
-    struct A {
-        int Jah;
-        struct B {
-            int x;
-        };
-    };
-    """
-    expected = "Error on line 4 col 8: struct"
-    run_parser_test("7", source, expected)  
-
-def test_8():
-    source = """
-    struct A {
-        int a;
-        int b;
-        void YhICameInWitheTheSauce(int jeffery, int epstein){
-            a = jeffery;
-            b = epstein;
-        }
-    }
-    void main() {}
-    """
-    expected = "Error on line 5 col 8: void"
-    run_parser_test("8", source, expected)  
-
-def test_9():
-    source = """
-    void main(){
-    A aa = {"string", 1, {}};
-    }
-    """
-    expected = "success"
-    run_parser_test("9", source, expected)  
-
-def test_10():
-    source = """
-    void main(){
-    int a = y = z = c = 10;
-    }
-    """
-    expected = "success"
-    run_parser_test("10", source, expected) 
-    
-def test_11():
-    source = "struct Empty {};  // Valid: empty struct with no members"
-    expected = "success"
-    run_parser_test("10", source, expected) 
-
-def test_12():
-    source = """
-    void main(){
-    int a = ++10-- a;
-    }
-    """
-    expected = "Error on line 3 col 19: a"
-    run_parser_test("12", source, expected) 
-
-def test_13():
-    source = """
-    int main(){
-    int a = BroSki() + ++a/4;
-    return 0;
-    }
-    """
-    expected = "success"
-    run_parser_test("13", source, expected) 
-
-def test_14():
-    source = """
-    void main(){
-    int a = BroSki() + (Jawohl).x;
-    return 0;
-    }
-    """
-    expected = "success"
-    run_parser_test("14", source, expected) 
-
-def test_15():
-    source = """
-    void main(){
-    int a,b,c = 10;
-    return;
-    }
-    """
-    expected = "Error on line 3 col 9: ,"
-    run_parser_test("15", source, expected) 
-
-def test_16():
-    source = """
-    void main(){
-        switch (x) {
-                default:
-                    printInt(0);
-                case 1:
-                    printInt(1);
-            }
-    return;
-    }
-    """
-    expected = "success"
-    run_parser_test("16", source, expected) 
-
-def test_17():
-    source = """
-    void main(){
-        switch (a.b + ++g - foo()) {
-            case 1:
-                printInt(1);
-            default:
-                printInt(0);
-            case 1:
-                printInt(1);
-        }
-    return;
-    }
-    """
-    expected = "success"
-    run_parser_test("17", source, expected) 
-
-def test_18():
-    source = """
-    void main(){
-        switch (a.b + ++g - foo()) {
-            case 1 + 2 * (3 - 1):
-                printInt(1);
-            default:
-                functionHere() + foo();
-            case 1:
-                printInt(1);
-        }
-    return;
-    }
-    """
-    expected = "success"
-    run_parser_test("18", source, expected) 
-
-def test_19():
-    source = """
-    void main(){
-        switch () {
-            case 1 + 2 * (3 - 1):
-                printInt(1);
-            default:
-                ;
-        }
-        return;
-    }
-            """
-    expected = "Error on line 2 col 16: )"
-    run_parser_test("19", source, expected) 
-
-def test_19():
-    source = """
-    int Foo(){
-        switch (a || b + ++c / foo()) {
-            case 1 + 2 * (3 - 1):
-                printInt(1);
-            default:
-                ;
-        }
-    }
-            """
-    expected = "Error on line 6 col 16: ;"
-    run_parser_test("19", source, expected) 
-
-def test_19():
-    source = """
-    void main(){
-        switch (a) {
-            case 1 + 2 * (3 - 1):
-                ;
-            default:
-                ;
-        }
-        return;
-    }
-            """
-    expected = "Error on line 5 col 16: ;"
-    run_parser_test("19", source, expected) 
-
-def test_20():
-    source = """
-    void main(){
-        switch (a) {
-            case 1 + 2 * (3 - 1):
-                break;
-        }
-    return;
-    }
-            """
-    expected = "success"
-    run_parser_test("19", source, expected) 
-
-def test_21():
-    source = """
-    void main(){
-        switch (x) { }
-    return 0;
-    }
-            """
-    expected = "success"
-    run_parser_test("21", source, expected) 
-
-def test_22():
-    source = """
-    int Sunmo(int a, int b){
-        int i;
-        for (i = 0; i < n; ){}
-    }
-            """
-    expected = "success"
-    run_parser_test("22", source, expected) 
-
-def test_23():
-    source = """
-    T14 Shiff(int g){
-        int i;
-        for (; i < (n); ){}
-    return g;
-    }
-            """
-    expected = "success"
-    run_parser_test("23", source, expected) 
-
-def test_24():
-    source = """
-    void main(){
-        auto i;
-        for (; i != foo(a) ; ){}
-        return 0;
-    }
-            """
-    expected = "success"
-    run_parser_test("24", source, expected) 
-
-def test_25():
-    source = """
-    void bgh(){
-        auto i;
-        for (; (i) < sum(a+b) ; --i){}
-    return;
-    }
-            """
-    expected = "success"
-    run_parser_test("25", source, expected) 
-    
-def test_26():
-    source = """
-    float Nig(float b){
-        auto i;
-        for (i == 0; i < nibba; i++){}
-        return 3.14;
-    }
-            """
-    expected = "Error on line 4 col 15: =="
-    run_parser_test("26", source, expected) 
-
-def test_27():
-    source = """
-    void Conduct(){
-        auto i;
-        for (i = 0; true; i++){
-            printf("%d",1);
-        }
-    return;
-    }
-            """
-    expected = "success"
-    run_parser_test("27", source, expected) 
-
-def test_28():
-    source = """
-    int main(){
-        auto i;
-        for (i = 0; true; i++) conCho cao = {"Do", "Skibid", {"Tay",67}};
-        return 0;
-    }
-            """
-    expected = "success"
-    run_parser_test("28", source, expected)
-
-def test_29():
-    source = """
-    void for(){
-        auto i;
-        for (i = 0; true; i++){
-        choDo();
-        void muHaHa(){
-            return;
-            }
-        }
-    }
-        """
-    expected = "Error on line 2 col 9: for"
-    run_parser_test("29", source, expected)
-
-def test_30():
-    source = """
-    int main(){
-        auto i;
-        for (c cc = {1,2}; (cc).a < 10; cc.a++){
-            printf("%d",1);
-            cc.(a)++
-        }
-    }
-        """
-    expected = "Error on line 6 col 15: ("
-    run_parser_test("30", source, expected)
-
-def test_31():
-    source = """
-    void main(){
-        auto x = a.c + ((fubar()) / ++y);
-        return 0;
-    }
-        """
-    expected = "success"
-    run_parser_test("31", source, expected)
-
-def test_32():
-    source = """
-    void main(){
-        auto x = a.c + ((fubar()) / ++y) && (!j);
-        }
-        """
-    expected = "success"
-    run_parser_test("32", source, expected)
-
-def test_33():
-    source = """
-    void main(){
-        foo().a = 1;
-        }
-        """
-    expected = "success"
-    run_parser_test("33", source, expected)
-
-def test_34():
-    source = """
-    void main(){
-        auto x = ++a.b.c;
-        }
-        """
-    expected = "success"
-    run_parser_test("34", source, expected)
-
-def test_35():
-    source = """
-    void main(){
-        auto x = g({{1,2},3});
-        }
-        """
-    expected = "success"
-    run_parser_test("35", source, expected)
-
-def test_36():
-    source = """
-    void main(){
-        auto x = g({{1,2},3}, {}, g() + 1);
-        }
-        """
-    expected = "success"
-    run_parser_test("36", source, expected)
-
-def test_37():
-    source = """
-    void main(){
-        auto x = g({{1,2},3}, {}, g() + 1);
-        }
-        """
-    expected = "success"
-    run_parser_test("37", source, expected)
-    
-def test_38():
-    source = """
-    void main(){
-        auto a = b = c + d;
-        }
-        """
-    expected = "success"
-    run_parser_test("38", source, expected)
-
-def test_39():
-    source = """
-    int x = 10;
-        """
-    expected = "Error on line 2 col 10: ="
-    run_parser_test("39", source, expected)
-
-def test_40():
-    source = """
-    void main(){
-        auto a = a < b == c < d;
-        }
-        """
-    expected = "success"
-    run_parser_test("40", source, expected)
-
-def test_41():
-    source = """
-    void main(){
-        int x = (a + b;
-        }
-        """
-    expected = "Error on line 3 col 22: ;"
-    run_parser_test("41", source, expected)
-
-def test_42():
-    source = """
-    void main(){
-    // here right ?
-        auto x = (a + b) = c;
-    }
-    """
-    expected = "Error on line 4 col 25: ="
-    run_parser_test("42", source, expected)
-
-def test_43():
-    source = """
-    void main(){
-        auto x = a.x = c || b;
-    }
-    """
-    expected = "success"
-    run_parser_test("43", source, expected)
-
-def test_44():
-    source = """
-    void main(){
-        auto (x) = (a).x = c || b;
-    }
-    """
-    expected = "Error on line 3 col 13: ("
-    run_parser_test("44", source, expected)
-
-def test_45():
-    source = """
-    void main(){
-        auto x = ((a).x = (c || b));
-    }
-    """
-    expected = "success"
-    run_parser_test("45", source, expected)
-
-def test_46():
-    source = """
-    void main(){
-        if (flag) {
-            printInt(1);
-        } else {
-            printInt(0);
+void main() {
+    printString("Hello, World!");
 }
-    }
-    """
+"""
     expected = "success"
-    run_parser_test("46", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_47():
+def test_002():
     source = """
-    void main(){
-        else {
-            printInt(0);
-        }
-    }
-    """
-    expected = "Error on line 3 col 8: else"
-    run_parser_test("47", source, expected)
+int add(int x, int y) {
+    return x + y;
+}
 
-def test_48():
-    source = """
-    void main(){
-        if (a)
-            x = 1;
-        else {
-            x = 2;
-            y = 3;
-        }   
-    }
-    """
+int multiply(int x, int y) {
+    return x * y;
+}
+
+void main() {
+    auto a = readInt();
+    auto b = readInt();
+    
+    auto sum = add(a, b);
+    auto product = multiply(a, b);
+    
+    printInt(sum);
+    printInt(product);
+}
+"""
     expected = "success"
-    run_parser_test("48", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_49():
+def test_003():
     source = """
-    void main(){
-        if (true)
-            x = 1;
-        else {
-            x = 2;
-            y = 3;
-        }   
+void main() {
+    auto n = readInt();
+    auto i = 0;
+    
+    while (i < n) {
+        printInt(i);
+        ++i;
     }
-    """
+    
+    for (auto j = 0; j < n; ++j) {
+        if (j % 2 == 0) {
+            printInt(j);
+        }
+    }
+}
+"""
     expected = "success"
-    run_parser_test("49", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_50():
+def test_004():
     source = """
-    void main(){
-        if (a);
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
     }
-    """
-    expected = "Error on line 3 col 14: ;"
-    run_parser_test("50", source, expected)
+}
 
-def test_51():
-    source = """
-    void main(){
-        for (i = 0; i < 10; i++)
-            if (i % 2)
-                x = i;
-            else
-                y = i;
-    }
-    """
+void main() {
+    auto num = readInt();
+    auto result = factorial(num);
+    printInt(result);
+}
+"""
     expected = "success"
-    run_parser_test("51", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_52():
+def test_005():
     source = """
-    void main(){
-        if (x = y + 1)
-            z = 2;
-    }
-    """
+void main() {
+    // With auto and initialization
+    auto x = readInt();
+    auto y = readFloat();
+    auto name = readString();
+    
+    // With auto without initialization
+    auto sum;
+    sum = x + y;              // sum: float (inferred from first usage - assignment)
+    
+    // With explicit type and initialization
+    int count = 0;
+    float total = 0.0;
+    string greeting = "Hello, ";
+    
+    // With explicit type without initialization
+    int i;
+    float f;
+    i = readInt();            // assignment to int
+    f = readFloat();          // assignment to float
+    
+    printFloat(sum);
+    printString(greeting);
+    printString(name);
+    
+    // Note: String concatenation is NOT supported
+    // This is because + operator applies to int or float, not string
+}
+"""
     expected = "success"
-    run_parser_test("52", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_53():
-    source = """
-    void main(){
-        if (a)
-            if (b)
-                if (c)
-                    x = 1;
-                else
-                    x = 2;
-    }
-    """
+
+def test_006():
+    source ="""
+struct Point {
+    int x;
+    int y;
+};
+
+struct Person {
+    string name;
+    int age;
+    float height;
+};
+
+void main() {
+    // Struct variable declaration without initialization
+    Point p1;
+    p1.x = 10;
+    p1.y = 20;
+    
+    // Struct variable declaration with initialization
+    Point p2 = {30, 40};
+    
+    // Access and modify struct members
+    printInt(p2.x);
+    printInt(p2.y);
+    
+    // Struct assignment
+    p1 = p2;  // Copy all members
+    
+    // Person struct usage
+    Person person1 = {"John", 25, 1.75};
+    printString(person1.name);
+    printInt(person1.age);
+    printFloat(person1.height);
+    
+    // Modify struct members
+    person1.age = 26;
+    person1.height = 1.76;
+    
+    // Using struct with auto
+    auto p3 = p2;  // p3: Point (inferred from assignment)
+    printInt(p3.x);
+}
+"""
     expected = "success"
-    run_parser_test("53", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_54():
+def test_007():
     source = """
-    void main(){
-        if (a){
-            return 0;
-            return;
-        }
-        else
-            continue;
-    return; 
-    }
-    """
+void main() {
+"""
+    expected = "Error on line 3 col 0: <EOF>"
+    assert Parser(source).parse() == expected
+
+def test_008():
+    source = """
+void main {}
+"""
+    expected = "Error on line 2 col 10: {"
+    assert Parser(source).parse() == expected
+
+def test_009():
+    source = """
+void main () {
+    return 1;
+    return 1.0;
+    return "votien";
+    return {1, 2, 1.0}; // struct lit
+    return {};
+}
+"""
     expected = "success"
-    run_parser_test("54", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_55():
+def test_010():
     source = """
-    void main(){
-        if (a)
-            return 0;
-            return;
-        else
-            continue;
-            return; 
-    }
-    """
-    expected = "Error on line 6 col 8: else"
-    run_parser_test("55", source, expected)
-
-def test_56():
-    source = """
-    """
+void main () {
+    return a = b = 3;
+    return (a = b) + 7;
+}
+"""
     expected = "success"
-    run_parser_test("56", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_56():
+def test_011():
     source = """
-        void main() {
-            int f(int x) {
-            return x;
-            }
-        }
-    """
-    expected = "Error on line 3 col 17: ("
-    run_parser_test("56", source, expected)
-
-def test_57():
-    source = """
-        int f() {
-            return 1;
-            return 2;
-        }
-    """
+void main () {
+    return 1 || 2 || 3;
+    return a = "votien" || 3;
+}
+"""
     expected = "success"
-    run_parser_test("57", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_58():
+def test_012():
     source = """
-        int f() {
-            return 1;
-            return 2;
-        }
-    """
+void main () {
+    return 1 && 2 && 3;
+    return 1.0 || "votien" && 3;
+}
+"""
     expected = "success"
-    run_parser_test("58", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_59():
+def test_013():
     source = """
-        void void() {
-            return 1;
-            return 2;
-        }
-    """
-    expected = "Error on line 2 col 13: void"
-    run_parser_test("59", source, expected)
-
-def test_60():
-    source = """
-        void sum(int a, int b, int c) {
-            auto y = f(a) + f(b) * (f(c));
-        }
-    """
+void main () {
+    return 1 == 2 != 3;
+    return 1.0 && "votien" == 3 && 2 != 2;
+}
+"""
     expected = "success"
-    run_parser_test("60", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_61():
+
+def test_014():
     source = """
-        void sum(int a, int b, int c) {
-            auto y = f(a) + f(b) * (f(c));
-            return "Y-Que-Fue?";
-        }
-    """
+void main () {
+    return 1 >= 2 < 3 <= 4 > 5;
+    return 1.0 == "votien" >= 3 != 2 > 2;
+}
+"""
     expected = "success"
-    run_parser_test("61", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_62():
+def test_015():
     source = """
-        void sum(int a,b) {
-            auto y = f(a) + f(b) * (f(c));
-            return "Y-Que-Fue?";
-        }
-    """
-    expected = "Error on line 2 col 24: )"
-    run_parser_test("62", source, expected)
-
-def test_62():
-    source = """
-        void sum(int a,b) {
-            auto y = f(a) + f(b) * (f(c));
-            return "Y-Que-Fue?";
-        }
-    """
-    expected = "Error on line 2 col 24: )"
-    run_parser_test("62", source, expected)
-
-def test_63():
-    source = """
-        void main(){ 
-            int x = f(a, g(b)); 
-        }
-    """
+void main () {
+    return 1 + 2 - 3;
+    return 1 + 2 > 1 - 3;
+}
+"""
     expected = "success"
-    run_parser_test("63", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_64():
+def test_016():
     source = """
-        foo(){
-            for(int i = 0; i < 10; foo(i)++){
-                FAH().x = 1;
-            }
-            for(int i = 0; i < 10; foo(i)){
-                FAH().x = 1;
-            }
-        }
-        void main(){ 
-            foo();
-        }
-    """
-    expected = "Error on line 6 col 41: )"
-    run_parser_test("64", source, expected)
-
-def test_65():
-    source = """
-        void main(){ 
-            int x = f(a, g(b), {4,5}, {}); 
-        }
-    """
+void main () {
+    return 1 * 2 / 3 % 4;
+    return 1 + 2 * 3;
+}
+"""
     expected = "success"
-    run_parser_test("65", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_66():
+def test_017():
     source = """
-        void main(){ 
-            x.y = f(a, g(b), {4,5}, {}); 
-        }
-    """
+void main () {
+    return a.b.c.d.g.h;
+    return a * a.b.c;
+}
+"""
     expected = "success"
-    run_parser_test("66", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_67():
+def test_018():
     source = """
-        void main(){ 
-            foo()++;
-        }
-    """
+void main () {
+    return !!-+!-+a;
+    return !-+a.b.c;
+}
+"""
     expected = "success"
-    run_parser_test("67", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_68():
+def test_019():
     source = """
-        void main(){ 
-            int x = foo()++++ + i;
-        }
-    """
+void main () {
+    return ++--++a;
+    return !++a;
+}
+"""
     expected = "success"
-    run_parser_test("68", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_69():
+def test_020():
     source = """
-        void fah(){
-        for(; ep() < 9; a++){
-                        {
-                            while(a < 7) {
-                                {
-                                    switch(a){
-                                        {
-                                        
-                                        }
-                                    }
-                                }
-                            }   
-                        }
-                    }
-        }
-        void main(){ 
-            fah();
-        }
-    """
-    expected = "Error on line 8 col 40: {"
-    run_parser_test("69", source, expected)
+void main () {
+    return ++!a;
+}
+"""
+    expected = "Error on line 3 col 13: !"
+    assert Parser(source).parse() == expected
 
-def test_70():
+def test_021():
     source = """
-    void main(){
-        int i = 0;
-        for (i = 0; i < 10; i = i + 1) {
-            if (i % 2 == 0)
-                printInt(i);
-        }
-    }
-    """
+void main () {
+    return +++a;
+}
+"""
+    expected = "Error on line 3 col 13: +"
+    assert Parser(source).parse() == expected
+
+def test_022():
+    source = """
+void main () {
+    return a++--++--;
+    return ++--++--a++--++--;
+}
+"""
     expected = "success"
-    run_parser_test("70", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_71():
+def test_023():
     source = """
-    void main(){
-        int x = 10;
-        while (x > 0) {
-            x = x - 1;
-            if (x == 5)
-                break;
-        }
-    }
-    """
+void main () {
+    return ++(+a) * (a / (c));
+}
+"""
     expected = "success"
-    run_parser_test("71", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_72():
+def test_024():
     source = """
-    void main(){
-        int a = 10;
-        if (a > 5) {
-            a = a + 1;
-            break;
-        }
-    }
-    """
-    expected = "success"   # semantic mới lỗi
-    run_parser_test("72", source, expected)
-
-def test_73():
-    source = """
-    void main(){
-        int x = 2;
-        switch (x) {
-            case 1:
-                x = x + 1;
-            case 2:
-                x = x + 2;
-                break;
-            default:
-                x = 0;
-        }
-    }
-    """
+void main () {
+    return {1+3, "s"++};
+}
+"""
     expected = "success"
-    run_parser_test("73", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_74():
+def test_025():
     source = """
-    void main(){
-        int i = 0;
-        for (i = 0; i < 5; i = i + 1) {
-            int j = 0;
-            while (j < 5) {
-                j = j + 1;
-                if (j == 3)
-                    continue;
-            }
-        }
-    }
-    """
+void main () {
+    return foo() + foo(1) + foo(1*2++, 1 && 2, foo());
+}
+"""
     expected = "success"
-    run_parser_test("74", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_75():
+def test_026():
     source = """
-    void main(){
-        auto x = foo(1, 2) + bar(a, b) * (baz() - 3);
-        printInt(x);
-    }
-    """
+void main () {
+    foo(;
+}
+"""
+    expected = "Error on line 3 col 8: ;"
+    assert Parser(source).parse() == expected
+
+def test_027():
+    source = """
+void main () {
+    foo(a b);
+}
+"""
+    expected = "Error on line 3 col 10: b"
+    assert Parser(source).parse() == expected
+
+def test_028():
+    source = """
+void main () {
+    a.foo();
+}
+"""
+    expected = "Error on line 3 col 9: ("
+    assert Parser(source).parse() == expected
+
+def test_029():
+    source = """
+void main () {
+    foo.a.b;
+    ++a.b;
+    a.b++;
+}
+"""
     expected = "success"
-    run_parser_test("75", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_76():
+def test_030():
     source = """
-    void main(){
-        if (a)
-            if (b)
-                x = 1;
-        else
-            x = 2;
-    }
-    """
+void main () {
+    +a++;
+}
+"""
     expected = "success"
-    run_parser_test("76", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_77():
+def test_031():
     source = """
-    void main(){
-        int x = 1;
-        switch (x) {
-            case 1:
-                x = 2;
-                break;
-    }
-    """
-    expected = "Error on line 9 col 4: <EOF>"
-    run_parser_test("77", source, expected)
-
-
-def test_78():
-    source = """
-    void main(){
-        int i = 0;
-        for (i = 0 i < 10; i = i + 1) {
-            printInt(i);
-        }
-    }
-    """
-    expected = "Error on line 4 col 19: i"
-    run_parser_test("78", source, expected)
-
-def test_79():
-    source = """
-    void main(){
-        int i = 0;
-        for (i = 0; i < 3; i = i + 1) {
-            switch (i) {
-                case 0:
-                    foo();
-                    break;
-                case 1:
-                    while (i < 2 && foo() != "ThatOneFlower") {
-                        i = i + 1;
-                    }
-                    break;
-                default:
-                    bar(i);
-            }
-        }
-    }
-    """
+void main () {
+    int a = 1;
+    int a;
+    float b = 1;
+    string b = 1 + 2 / 3;
+    auto b = 1;
+    auto b;
+    ID b = foo();
+    ID b;
+}
+"""
     expected = "success"
-    run_parser_test("79", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_80():
+def test_032():
     source = """
-    void main(){
-        for (auto i = 0; i < 3; i = i + 1) {
-            switch (i) {
-                case 0:
-                    i = i + 1;
-                case 1:
-                    i = i + 2;
-                    break;
-                default:
-                    i = 0;
-            }
-        }
-    }
-    """
+void main () {
+    void a = 1;
+}
+"""
+    expected = "Error on line 3 col 4: void"
+    assert Parser(source).parse() == expected
+
+def test_033():
+    source = """
+void main () {
+    void a;
+}
+"""
+    expected = "Error on line 3 col 4: void"
+    assert Parser(source).parse() == expected
+
+def test_034():
+    source = """
+void main () {
+    int a, b;
+}
+"""
+    expected = "Error on line 3 col 9: ,"
+    assert Parser(source).parse() == expected
+
+def test_035():
+    source = """
+void main () {
+    int a = e = 3;
+}
+"""
     expected = "success"
-    run_parser_test("80", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_81():
+def test_036():
     source = """
-    void main(){
-        while (foo(a + b * c)) {
-            {
-                auto x = bar(foo(1), (a = b));
-                x = x + 1;
-            }
-        }
-    }
-    """
+void main () {
+    int a
+}
+"""
+    expected = "Error on line 4 col 0: }"
+    assert Parser(source).parse() == expected
+
+def test_037():
+    source = """
+void main () {
+    a = 2;
+    a.b = foo() + a.b * 3;
+    a.b.c.d = 1;
+}
+"""
     expected = "success"
-    run_parser_test("81", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_82():
+def test_038():
     source = """
-    void main(){
-        for (; ; (i)++) {
-            switch ((a + b) * (c - d)) {
-                case 1 + 2:
-                    foo();
-                case (3 * 4):
-                    bar();
-                    break;
-                default:
-                    baz();
-            }
-        }
-    }
-    """
+void main () {
+    ++a = 1;
+}
+"""
+    expected = "Error on line 3 col 8: ="
+    assert Parser(source).parse() == expected
+
+def test_039():
+    source = """
+void main () {
+    foo() = 1;
+}
+"""
+    expected = "Error on line 3 col 10: ="
+    assert Parser(source).parse() == expected
+
+def test_040():
+    source = """
+void main () {
+    if (1 + 2) continue;
+    else break;
+
+    if (a.b.c) {if (c.a) return;}
+}
+"""
     expected = "success"
-    run_parser_test("82", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_83():
+def test_041():
     source = """
-    void main(){
-        auto x;
-        auto y;
-        auto z;
-        x = y = z = foo(a, b + c);
-    }
-    """
-    expected = "success"
-    run_parser_test("83", source, expected)
-
-def test_84():
-    source = """
-    void main(){
-        if (a > b)
-            switch (a) {
-                case 1:
-                    return;
-                default:
-                    return;
-            }
-        else
-            return;
-    }
-    """
-    expected = "success"
-    run_parser_test("84", source, expected)
-
-def test_85():
-    source = """
-    void main(){
-        foo({1, 2, {3, 4}}, bar({5}));
-    }
-    """
-    expected = "success"
-    run_parser_test("85", source, expected)
-
-def test_86():
-    source = """
-    void main(){
-        while (a < b) {
-            if (a == 0)
-                continue;
-            if (a > 10)
-                break;
-            a = a + 1;
-        }
-    }
-    """
-    expected = "success"
-    run_parser_test("86", source, expected)
-
-def test_87():
-    source = """
-    void main(){
-        for (i == 1; i < k; ++i){
-            GotCha("=))");
-        }
-    }
-    """
-    expected = "Error on line 3 col 15: =="
-    run_parser_test("87", source, expected)
-
-def test_88():
-    source = """
-    void main(){
-        for (Point p = {1, 2}; p.x < 10; p.x = p.x + 1) {
-            foo(p);
-        }
-    }
-    """
-    expected = "success"
-    run_parser_test("88", source, expected)
-
-def test_89():
-    source = """
-    void main(){
-        switch (a + b) {
-        }
-    }
-    """
-    expected = "success"
-    run_parser_test("89", source, expected)
-
-def test_90():
-    source = """
-    void main(){
-        switch (a + b {
-            case 1: break;
-        }
-    }
-    """
-    expected = "Error on line 3 col 22: {"
-    run_parser_test("90", source, expected)
-
-def test_91():
-    source = """
-    void main(){
-        switch (a) {
-            case 1:
-                break;
-        }
-    }
-    """
-    expected = "success"
-    run_parser_test("91", source, expected)
-
-def test_92():
-    source = """
-    void main(){
-        for (auto i = 0 i < 10; i = i + 1) {
-            foo();
-        }
-    }
-    """
-    expected = "Error on line 3 col 24: i"
-    run_parser_test("92", source, expected)
-
-def test_93():
-    source = """
-    void main(){
-        while () {
-            foo();
-        }
-    }
-    """
-    expected = "Error on line 3 col 15: )"
-    run_parser_test("93", source, expected)
-
-def test_94():
-    source = """
-    void main(){
-        foo(1, 2;
-    }
-    """
-    expected = "Error on line 3 col 16: ;"
-    run_parser_test("94", source, expected)
-
-def test_95():
-    source = """
-    void main(){
-        a = ;
-    }
-    """
-    expected = "Error on line 3 col 12: ;"
-    run_parser_test("95", source, expected)
-
-def test_96():
-    source = """
-    void main(){
-        10++;
-    }
-    """
-    expected = "success"
-    run_parser_test("96", source, expected)
-
-def test_97():
-    source = """
-    void main(){
-        a.;
-    }
-    """
+void main () {
+    if (1);
+}
+"""
     expected = "Error on line 3 col 10: ;"
-    run_parser_test("97", source, expected)
+    assert Parser(source).parse() == expected
 
-def test_98():
+def test_042():
     source = """
-    void main(){
-        switch () {
-            case 1: break;
-        }
-    }
-    """
-    expected = "Error on line 3 col 16: )"
-    run_parser_test("98", source, expected)
+void main () {
+    if (1) {} else;
+}
+"""
+    expected = "Error on line 3 col 18: ;"
+    assert Parser(source).parse() == expected
 
-def test_99():
+def test_042():
     source = """
-    void main(){
-        for (i = 0; i < 10; ) ) {
-            foo();
-        }
+void main () {
+    if () {}
+}
+"""
+    expected = "Error on line 3 col 8: )"
+    assert Parser(source).parse() == expected
+
+def test_043():
+    source = """
+void main () {
+    int if;
+}
+"""
+    expected = "Error on line 3 col 8: if"
+    assert Parser(source).parse() == expected
+
+def test_044():
+    source = """
+void main () {
+    if (a) {} else if (2) {} else if (2) {} else {}
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_045():
+    source = """
+void main () {
+    while(1 > 2) continue;
+    while(1 > 2) {return; break;}
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_046():
+    source = """
+void main () {
+    while() continue;
+}
+"""
+    expected = "Error on line 3 col 10: )"
+    assert Parser(source).parse() == expected
+
+def test_047():
+    source = """
+void main () {
+    return ;
+    return 1 +2 *++3;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_048():
+    source = """
+ return ;
+"""
+    expected = "Error on line 2 col 1: return"
+    assert Parser(source).parse() == expected
+
+def test_048():
+    source = """
+void main () {
+    1 +2 -++3+a.b.c;
+    ;
+}
+"""
+    expected = "Error on line 4 col 4: ;"
+    assert Parser(source).parse() == expected
+
+def test_049():
+    source = """
+void main () {
+    {{{}}}
+    {return; {break;}}
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_050():
+    source = """
+void main () {
+   {retrun; };
+}
+"""
+    expected = "Error on line 3 col 13: ;"
+    assert Parser(source).parse() == expected
+
+def test_051():
+    source = """
+void main () {
+   for(int a = 1 + 2; i > 2; a++) continue;
+   for(a = a.b = 1; ; --a) a++;
+   for(auto a = 1; i * 2; a = 2) {return ;}
+   for(; ; ) {}
+   for({1,2}.a = 1; ; (a+2).b = 2) a++;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_052():
+    source = """
+void main () {
+   for(break; ; ) continue;
+}
+"""
+    expected = "Error on line 3 col 7: break"
+    assert Parser(source).parse() == expected
+
+def test_053():
+    source = """
+void main () {
+   for(a=2;; ; ) continue;
+}
+"""
+    expected = "Error on line 3 col 13: ;"
+    assert Parser(source).parse() == expected
+
+def test_054():
+    source = """
+void main () {
+   for(; break ; ) continue;
+}
+"""
+    expected = "Error on line 3 col 9: break"
+    assert Parser(source).parse() == expected
+
+def test_055():
+    source = """
+void main () {
+   for(; break ; ) continue;
+}
+"""
+    expected = "Error on line 3 col 9: break"
+    assert Parser(source).parse() == expected
+
+def test_056():
+    source = """
+void main () {
+   for(a.b=2; ; ) continue;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_057():
+    source = """
+void main () {
+   for(; ; -a) continue;
+}
+"""
+    expected = "Error on line 3 col 11: -"
+    assert Parser(source).parse() == expected
+
+def test_058():
+    source = """
+void main () {
+   for(; ; a.b=a.c.c=c()) continue;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_059():
+    source = """
+void main () {
+   for(; ;);
+}
+"""
+    expected = "Error on line 3 col 11: ;"
+    assert Parser(source).parse() == expected
+
+def test_060():
+    source = """
+void main () {
+   for(; ;);
+}
+"""
+    expected = "Error on line 3 col 11: ;"
+    assert Parser(source).parse() == expected
+
+def test_061():
+    source = """
+void main () {
+    auto x = readInt();
+    switch (x) {
+        case 1:
+            printInt(1);
+        case 2:
+            printInt(2);
+        default:
+            printInt(0);
     }
-    """
-    expected = "Error on line 3 col 30: )"
-    run_parser_test("99", source, expected)
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_062():
+    source = """
+void main () {
+    int x = 10;
+    switch (x) {
+        case 1:
+            printInt(1);
+        case 2:
+            printInt(2);
+    }
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_063():
+    source = """
+void main () {
+    switch (1) {
+        case :
+            printInt(1);
+    }
+}
+"""
+    expected = "Error on line 4 col 13: :"
+    assert Parser(source).parse() == expected
+
+def test_064():
+    source = """
+void main () {
+    switch () {
+        case 1:
+            printInt(1);
+    }
+}
+"""
+    expected = "Error on line 3 col 12: )"
+    assert Parser(source).parse() == expected
+
+def test_065():
+    source = """
+void main () {
+    switch (1) {
+        default
+            printInt(0);
+    }
+}
+"""
+    expected = "Error on line 5 col 12: printInt"
+    assert Parser(source).parse() == expected
+
+def test_066():
+    source = """
+void main () {
+    switch (1) {
+        case 1 + 2 * "s":
+            printInt(0);
+            return ;
+            break;
+        default:
+            printInt(0);
+            {if(1){}}
+    }
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_067():
+    source = """
+void main () {
+    switch (1 *3 / 4) {
+        default:
+            1;
+        case 2:
+             2;
+    }
+
+    switch (1 *3 / 4) {
+        case 3:1;
+        default:1;
+        case 2: 2;
+    }
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_068():
+    source = """
+AAAA main (int a, int b) {return;}
+void main3 () {}
+ID main2 (int a) {return;}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_069():
+    source = """
+AAAA main (int a, b) {return;}
+"""
+    expected = "Error on line 2 col 19: )"
+    assert Parser(source).parse() == expected
+
+def test_070():
+    source = """
+AAAA main (int a) continue;
+"""
+    expected = "Error on line 2 col 18: continue"
+    assert Parser(source).parse() == expected
+
+def test_071():
+    source = """
+AAAA main (int a);
+"""
+    expected = "Error on line 2 col 17: ;"
+    assert Parser(source).parse() == expected
+
+def test_072():
+    source = """
+AAAA main (auto a){}
+"""
+    expected = "Error on line 2 col 11: auto"
+    assert Parser(source).parse() == expected
+
+def test_073():
+    source = """
+AAAA main (void a){}
+"""
+    expected = "Error on line 2 col 11: void"
+    assert Parser(source).parse() == expected
+
+def test_074():
+    source = """
+AAAA main (){};
+"""
+    expected = "Error on line 2 col 14: ;"
+    assert Parser(source).parse() == expected
+
+def test_075():
+    source = """
+AAAA main (){AAAA main (){}}
+"""
+    expected = "Error on line 2 col 23: ("
+    assert Parser(source).parse() == expected
+
+def test_076():
+    source = """
+struct ID {int a; ID b;};
+int main (){}
+struct ID1 {};
+id main (){}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_077():
+    source = """
+struct ID {int a; ID b;}
+"""
+    expected = "Error on line 3 col 0: <EOF>"
+    assert Parser(source).parse() == expected
+
+def test_078():
+    source = """
+struct ID {auto a;}
+"""
+    expected = "Error on line 2 col 11: auto"
+    assert Parser(source).parse() == expected
+
+def test_079():
+    source = """
+struct ID {void a;}
+"""
+    expected = "Error on line 2 col 11: void"
+    assert Parser(source).parse() == expected
+
+def test_080():
+    source = """
+struct ID {int a}
+"""
+    expected = "Error on line 2 col 16: }"
+    assert Parser(source).parse() == expected
+
+def test_081():
+    source = """
+struct ID {int a;;}
+"""
+    expected = "Error on line 2 col 17: ;"
+    assert Parser(source).parse() == expected
+
+def test_082():
+    source = """
+struct ID {int a, b;}
+"""
+    expected = "Error on line 2 col 16: ,"
+    assert Parser(source).parse() == expected
+
+def test_083():
+    source = """
+struct ID {int a; int main(){}}
+"""
+    expected = "Error on line 2 col 26: ("
+    assert Parser(source).parse() == expected
+
+def test_084():
+    source = """
+struct ID {struct ID{}}
+"""
+    expected = "Error on line 2 col 11: struct"
+    assert Parser(source).parse() == expected
+
+def test_085():
+    source = """
+int a = 2;
+"""
+    expected = "Error on line 2 col 6: ="
+    assert Parser(source).parse() == expected
+
+def test_086():
+    source = """
+    for(;;);
+"""
+    expected = "Error on line 2 col 4: for"
+    assert Parser(source).parse() == expected
+
+def test_087():
+    source = """
+void main(){for(;;)}
+"""
+    expected = "Error on line 2 col 19: }"
+    assert Parser(source).parse() == expected
+
+
+def test_088():
+    source = """
+void main(){
+    case 1:
+        printInt(1);
+}
+"""
+    expected = "Error on line 3 col 4: case"
+    assert Parser(source).parse() == expected
+
+
+def test_089():
+    source = """
+void main(){
+    T a = b;
+    True a = b;
+    true c = f;
+    F b = T;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_090():
+    source = """
+void main(){
+    auto a = 1 ** 3;
+}
+"""
+    expected = "Error on line 3 col 16: *"
+    assert Parser(source).parse() == expected
+
+def test_091():
+    source = """
+void main(){
+    auto a := 3;
+}
+"""
+    expected = "Error on line 3 col 11: :"
+    assert Parser(source).parse() == expected
+
+def test_092():
+    source = """
+struct A {};
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_093():
+    source = """
+void main(){
+    auto a := {};
+}
+"""
+    expected = "Error on line 3 col 11: :"
+    assert Parser(source).parse() == expected
+
+def test_094():
+    source = """
+void main(){
+    switch (x) { }
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_095():
+    source = """
+main(){}
+void main () {}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_096():
+    source = """
+main(){for(b=a=c; i * 2; a.bc = a = 3) {return ;}}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_097():
+    source = """
+main(){for(a * 3; i * 2; a++ = 2 = 3) {return ;}}
+"""
+    expected = "Error on line 2 col 13: *"
+    assert Parser(source).parse() == expected
+
+
+def test_098():
+    source = """
+main(){for({1,2}; i * 2; a++ = 2 = 3) {return ;}}
+"""
+    expected = "Error on line 2 col 16: ;"
+    assert Parser(source).parse() == expected
+
+
+def test_099():
+    source = """
+main(){; i++; a + 2) {return ;}}
+"""
+    expected = "Error on line 2 col 7: ;"
+    assert Parser(source).parse() == expected
 
 def test_100():
     source = """
-    void main(){
-        {1,2}.b;
-    }
-    """
+main(){return {{}, 1 ++};}
+"""
     expected = "success"
-    run_parser_test("100", source, expected)
+    assert Parser(source).parse() == expected
 
 def test_101():
     source = """
-    main(a){
-        int i = 1hellnah(a);
-    }
-    """
-    expected = "Error on line 2 col 10: )"
-    run_parser_test("101", source, expected)
+main(){return {{}, 1 ++};}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
 
 def test_102():
     source = """
-    void main(){
-        int i = _1hellnah(a);
-    }
-    """
-    expected = "success"
-    run_parser_test("102", source, expected)
+auto main(){}
+"""
+    expected = "Error on line 2 col 0: auto"
+    assert Parser(source).parse() == expected
 
 def test_103():
     source = """
-    void main(){
-        int i = 1 + ++a--++;
-    }
-    """
-    expected = "success"
-    run_parser_test("103", source, expected)
+main(){;}
+"""
+    expected = "Error on line 2 col 7: ;"
+    assert Parser(source).parse() == expected
 
 def test_104():
     source = """
-    void main(){
-        foo().a = 1;
-        int a = foo().b;
-        (foo()).c = 3;
-    }
-    """
-    expected = "success"
-    run_parser_test("103", source, expected)
+main(){};
+"""
+    expected = "Error on line 2 col 8: ;"
+    assert Parser(source).parse() == expected
 
 def test_105():
     source = """
-    void main(){
-        inRa("you reached this point, congrat and goodluck.");
+main(){
+    int a = .;
+}
+"""
+    expected = "Error on line 3 col 12: ."
+    assert Parser(source).parse() == expected
+
+def test_106():
+    source = """
+int a = 1;
+"""
+    expected = "Error on line 2 col 6: ="
+    assert Parser(source).parse() == expected
+
+def test_107():
+    source = """
+struct A{
+    main() {}
+}
+"""
+    expected = "Error on line 3 col 8: ("
+    assert Parser(source).parse() == expected
+
+def test_108():
+    source = """
+void main () {
+    auto x = readInt();
+    switch (x) {
+        default:
+            printInt(0);
+        default:
+            printInt(0);
     }
-    """
+}
+"""
+    expected = "Error on line 7 col 8: default"
+    assert Parser(source).parse() == expected
+
+
+def test_109():
+    source = """
+void main () {
+    auto x = readInt();
+    switch (x) {
+        default:
+            printInt(0);
+        case 1:
+            printInt(0);
+        default:
+            printInt(0);           
+    }
+}
+"""
+    expected = "Error on line 9 col 8: default"
+    assert Parser(source).parse() == expected
+
+
+def test_110():
+    source = """
+void main () {}
+struct main {};
+main () {}
+"""
     expected = "success"
-    run_parser_test("103", source, expected)
+    assert Parser(source).parse() == expected
+
+def test_111():
+    source = """
+void main () {
+   for(; ;a.b);
+}
+"""
+    expected = "Error on line 3 col 13: )"
+    assert Parser(source).parse() == expected
+
+def test_112():
+    source = """
+void main () {
+   for(; ;-a++);
+}
+"""
+    expected = "Error on line 3 col 10: -"
+    assert Parser(source).parse() == expected
+
+def test_113():
+    source = """
+void main () {
+   a + b = 2;
+}
+"""
+    expected = "Error on line 3 col 9: ="
+    assert Parser(source).parse() == expected
+
+def test_114():
+    source = """
+void main () {
+   a = b = c = a * 2;
+   a.b.c = a = c.d.e = 1 + 2;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_115():
+    source = """
+void main () {
+   foo().a;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_116():
+    source = """
+void main () {
+   {1, 2}.b;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_117():
+    source = """
+void main () {
+   a = 2 = a;
+}
+"""
+    expected = "Error on line 3 col 9: ="
+    assert Parser(source).parse() == expected
+
+def test_118():
+    source = """
+void main () {
+   ++!a;
+}
+"""
+    expected = "Error on line 3 col 5: !"
+    assert Parser(source).parse() == expected
+
+def test_119():
+    source = """
+void main () {
+   !a--;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_120():
+    source = """
+void main () {
+   a.b.c++;
+   --a.b.c;
+   -a.b.c;
+   ++a = 1;
+}
+"""
+    expected = "Error on line 6 col 7: ="
+    assert Parser(source).parse() == expected
+
+def test_121():
+    source = """
+void main () {
+    ++a.b;
+    a.b = 1;
+    ++(a.b) = 1;
+}
+"""
+    expected = "Error on line 5 col 12: ="
+    assert Parser(source).parse() == expected
+
+def test_122():
+    source = """
+void main () {
+    foo().b = 2;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_123():
+    source = """
+void main () {
+    a = foo().a = (a).b = "string".c.d.e = 1;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_124():
+    source = """
+void main () {
+    a = a + b = 1;
+}
+"""
+    expected = "Error on line 3 col 14: ="
+    assert Parser(source).parse() == expected
+
+def test_125():
+    source = """
+void main () {
+    ++ ! a;
+}
+"""
+    expected = "Error on line 3 col 7: !"
+    assert Parser(source).parse() == expected
+
+def test_126():
+    source = """
+void main () {
+    struct {};
+}
+"""
+    expected = "Error on line 3 col 4: struct"
+    assert Parser(source).parse() == expected
+
+def test_127():
+    source = """
+void main () {
+    ++a = 1;
+}
+"""
+    expected = "Error on line 3 col 8: ="
+    assert Parser(source).parse() == expected
+
+def test_128():
+    source = """
+void main () {
+   for(foo(1).c = 2; ; {1,2}.e = 2) {}
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_129():
+    source = """
+void main () {
+   for(foo(1).c = c = 2; ; a + e = 2) {}
+}
+"""
+    expected = "Error on line 3 col 29: +"
+    assert Parser(source).parse() == expected
+
+def test_130():
+    source = """
+void main () {
+   for(2 = 2; ; a = 2) {}
+}
+"""
+    expected = "Error on line 3 col 9: ="
+    assert Parser(source).parse() == expected
+
+def test_131():
+    source = """
+void main () {
+   a++.c;
+}
+"""
+    expected = "Error on line 3 col 6: ."
+    assert Parser(source).parse() == expected
+
+def test_132():
+    source = """
+void main () {
+   ++a.c;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_133():
+    source = """
+void main () {
+   a.c++;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_134():
+    source = """
+void main () {
+   a.++a;
+}
+"""
+    expected = "Error on line 3 col 5: ++"
+    assert Parser(source).parse() == expected
+
+def test_135():
+    source = """
+void main () {
+   for(++a; ; ){}
+}
+"""
+    expected = "Error on line 3 col 7: ++"
+    assert Parser(source).parse() == expected
+
+def test_136():
+    source = """
+void main () {
+   for(a--; ; ){}
+}
+"""
+    expected = "Error on line 3 col 8: --"
+    assert Parser(source).parse() == expected
+
+def test_137():
+    source = """
+void main () {
+   for(foo().a; ; ){}
+}
+"""
+    expected = "Error on line 3 col 14: ;"
+    assert Parser(source).parse() == expected
+
+def test_138():
+    source = """
+void main () {
+   (1 + 2).a.d.e;
+   {2,3,4}.f.g.h;
+   2.3.a.b.c;
+   "string".e.f.g.h;
+   (1).a.b.c.d;
+   foo(foo().a, a.b).c.d;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_139():
+    source = """
+void main () {
+   1 + {1,2} + -{a++}++;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+
+def test_140():
+    source = """
+void main () {
+   for(int a, int b;;){}
+}
+"""
+    expected = "Error on line 3 col 12: ,"
+    assert Parser(source).parse() == expected
+
+def test_141():
+    source = """
+void main () {
+   for(int a;;a++,++b){}
+}
+"""
+    expected = "Error on line 3 col 17: ,"
+    assert Parser(source).parse() == expected
+
+
+def test_142():
+    source = """
+void main () {
+   for(int a;;++(a + b)){}
+    for(int a;;{a,b}--){}
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_143():
+    source = """
+void main () {
+   for((a) = 2;;){}
+}
+"""
+    expected = "Error on line 3 col 11: ="
+    assert Parser(source).parse() == expected
+
+def test_144():
+    source = """
+void main () {
+   for(a;;){}
+}
+"""
+    expected = "Error on line 3 col 8: ;"
+    assert Parser(source).parse() == expected
+
+def test_145():
+    source = """
+void main () {
+   {1, 2} = 3;
+}
+"""
+    expected = "Error on line 3 col 10: ="
+    assert Parser(source).parse() == expected
+
+def test_146():
+    source = """
+void main () {
+   2.2.a.b.c.d;
+   (a) = 2;
+}
+"""
+    expected = "Error on line 4 col 7: ="
+    assert Parser(source).parse() == expected
+
+def test_147():
+    source = """
+void main () {
+   for(;;++ -- a ++ -- ) {}
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_148():
+    source = """
+void main () {
+   for(int a = 1;) {}
+}
+"""
+    expected = "Error on line 3 col 17: )"
+    assert Parser(source).parse() == expected
+
+def test_149():
+    source = """
+void main () {
+   2.0.a.b.c = {}.a.b = foo().c.d = 1;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_150():
+    source = """
+int a;
+void main () {
+}
+"""
+    expected = "Error on line 2 col 5: ;"
+    assert Parser(source).parse() == expected
+
+def test_151():
+    source = """
+void main () {
+    for(1; ;)
+}
+"""
+    expected = "Error on line 3 col 9: ;"
+    assert Parser(source).parse() == expected
+
+def test_152():
+    source = """
+void main () {
+    a(2)(3);
+}
+"""
+    expected = "Error on line 3 col 8: ("
+    assert Parser(source).parse() == expected
+
+def test_153():
+    source = """
+void main () {
+    ++ -- -a;
+}
+"""
+    expected = "Error on line 3 col 10: -"
+    assert Parser(source).parse() == expected
+
+def test_154():
+    source = """
+void main () {
+    auto x = readInt();
+    switch (x) {
+        case 1:
+        case 2:
+        default:
+    }
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_155():
+    source = """
+void main () {
+    auto x = readInt();
+    switch (x) {
+        default:
+    }
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_156():
+    source = """
+struct ID {int a = 1;}
+void main () {
+}
+"""
+    expected = "Error on line 2 col 17: ="
+    assert Parser(source).parse() == expected
+
+def test_157():
+    source = """
+float main () {
+    foo()++--;
+    2.3 ++;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_158():
+    source = """
+float main () {
+    foo(;; foo(1, 2))
+}
+"""
+    expected = "Error on line 3 col 8: ;"
+    assert Parser(source).parse() == expected
+
+def test_158():
+    source = """
+float main () {
+    ID{2, 3};
+}
+"""
+    expected = "Error on line 3 col 6: {"
+    assert Parser(source).parse() == expected
+
+def test_159():
+    source = """
+float main () {
+    for(;;i++++--){}
+    for(;;++++--{1,2}){}
+
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+
+def test_160():
+    source = """
+float main () {
+    endfunc a;
+    func = 1;
+    return call;
+    number = 2;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_161():
+    source = """
+float main () {
+    (a) = 2;
+}
+"""
+    expected = "Error on line 3 col 8: ="
+    assert Parser(source).parse() == expected
+
+def test_162():
+    source = """
+float main () {
+    (a).b = 2;
+    (a.b) = 3;
+}
+"""
+    expected = "Error on line 4 col 10: ="
+    assert Parser(source).parse() == expected
+
+def test_163():
+    source = """
+float main () {
+   for(i++;;)
+}
+"""
+    expected = "Error on line 3 col 8: ++"
+    assert Parser(source).parse() == expected
+
+def test_164():
+    source = """
+float main () {
+   for(++a;;)
+}
+"""
+    expected = "Error on line 3 col 7: ++"
+    assert Parser(source).parse() == expected
+
+
+def test_165():
+    source = """
+float main () {
+   for(1.2;;)
+}
+"""
+    expected = "Error on line 3 col 10: ;"
+    assert Parser(source).parse() == expected
+
+def test_166():
+    source = """
+float main () {
+{1, 3}.a.b.c.d = 1.2.a.b.c.d;
+   {1, 3} = 2;
+}
+"""
+    expected = "Error on line 4 col 10: ="
+    assert Parser(source).parse() == expected
+
+def test_165():
+    source = """
+float main () {
+   for("v";;)
+}
+"""
+    expected = "Error on line 3 col 10: ;"
+    assert Parser(source).parse() == expected
+
+def test_166():
+    source = """
+void main () {
+    auto x = readInt();
+    switch (a=b.c=a + 2 && 3 > 2 / {1,2}) {
+    }
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_167():
+    source = """
+void main () {
+    char a = 1;
+    char ++;
+    bool --;
+    bool = 2;
+    true a;
+    false a = false;
+    do = 1;
+}
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_167():
+    source = """
+int ID = 1;
+"""
+    expected = "Error on line 2 col 7: ="
+    assert Parser(source).parse() == expected
+
+
+def test_168():
+    source = """
+void main () {
+    auto x = readInt();
+    switch (x) continue;
+}
+"""
+    expected = "Error on line 4 col 15: continue"
+    assert Parser(source).parse() == expected
+
+def test_169():
+    source = """
+void main () {
+    do {} while(1);
+}
+"""
+    expected = "Error on line 3 col 7: {"
+    assert Parser(source).parse() == expected
+
+def test_170():
+    source = """
+void main () {
+    while(1);
+}
+"""
+    expected = "Error on line 3 col 12: ;"
+    assert Parser(source).parse() == expected
+
+def test_171():
+    source = """
+void main () {
+    while(1);
+}
+"""
+    expected = "Error on line 3 col 12: ;"
+    assert Parser(source).parse() == expected
+
+def test_172():
+    source = """
+// empty
+"""
+    expected = "success"
+    assert Parser(source).parse() == expected
+
+def test_173():
+    source = """
+auto foo() {return 1;}
+"""
+    expected = "Error on line 2 col 0: auto"
+    assert Parser(source).parse() == expected
+
+def test_174():
+    source = """
+auto foo() {return 1;}
+"""
+    expected = "Error on line 2 col 0: auto"
+    assert Parser(source).parse() == expected

@@ -76,7 +76,7 @@ expr_stmt:
     ;
 
 var_dec_stmt:
-    AUTO ID (ASSIGN expr)? SEMI
+    AUTO ID (ASSIGN initializer)? SEMI
     | type ID (ASSIGN initializer)? SEMI
     ;
 
@@ -102,38 +102,32 @@ while_stmt:
     ;
 
 for_stmt:
-    FOR LPAREN init? SEMI expr? SEMI update? RPAREN stmt+
-    ;
-
-init:
-    AUTO ID (ASSIGN expr)? |  type ID (ASSIGN expr)? | left_value ASSIGN expr
-    ;
-
-update:
-    left_value ASSIGN expr | prefix_update | postfix_update
-    ;
-
-prefix_update:
-    (INC | DEC) prefix_update 
-    | (INC | DEC) left_value
-    | (INC | DEC) LPAREN left_value RPAREN
-    | (INC | DEC) LPAREN update RPAREN
-    ;
-
-postfix_update:
-    postfix_update (INC | DEC)
-    | left_value (INC | DEC)
-    | LPAREN left_value RPAREN (INC | DEC)
-    | LPAREN update RPAREN (INC | DEC)
+    FOR LPAREN for_init? SEMI for_condition? SEMI for_update? RPAREN stmt
     ;
 
 
+for_init:
+      AUTO ID (ASSIGN initializer)?
+    | type ID (ASSIGN initializer)?
+    | lhs ASSIGN assignment_expr
+    ;
+
+for_condition:
+    expr
+    ;
+
+for_update:
+      lhs ASSIGN assignment_expr
+    | (INC | DEC) prefix_expr
+    | postfix_expr (INC | DEC)
+    ;
+    
 switch_stmt:
-    SWITCH LPAREN expr RPAREN LBRACE switch_section* RBRACE
+    SWITCH LPAREN expr RPAREN LBRACE switch_section RBRACE
     ;
 
 switch_section:
-    case_block | default_block
+    case_block* default_block? case_block*
     ;
 
 case_block:
@@ -158,9 +152,6 @@ break_stmt:
     BREAK SEMI
     ;
 
-left_value:
-    ID (MEM_ACCESS ID)*
-    ;
 
 //---------------------EXPRESSION------------------------
 expr:
@@ -168,11 +159,11 @@ expr:
     ;
 
 assignment_expr:
-    logical_OR_expr | assignable_expr ASSIGN assignment_expr
+    lhs ASSIGN assignment_expr | logical_OR_expr
     ;
 
-assignable_expr:
-    postfix_expr MEM_ACCESS ID | ID
+lhs:
+    member_access_expr MEM_ACCESS ID | ID
     ;
 
 logical_OR_expr:
@@ -210,37 +201,45 @@ prefix_expr:
 
 
 postfix_expr:
-    postfix_expr (INC | DEC) | mem_access_expr
+    postfix_expr (INC | DEC) | member_access_expr
     ;
 
-mem_access_expr:
-    mem_access_expr MEM_ACCESS ID | primary_expr
+member_access_expr:
+    member_access_expr MEM_ACCESS ID
+    | primary_expr (LPAREN arg_list_opt RPAREN)
+    | primary_expr
     ;
 
 
 primary_expr:
-    ID | literal | LPAREN expr RPAREN | function_call
+    ID | literal | LPAREN expr RPAREN 
     ;
 
-literal:
-    INT | FLOAT | STRING | struct_type
-    ;
 
-struct_type:
-    LBRACE expr_list? RBRACE
-    ;
-
-expr_list:
-    expr (COMMA expr)*
-    ;
-
-function_call:
-    ID LPAREN arg_list? RPAREN
+arg_list_opt:
+    arg_list | 
     ;
 
 arg_list:
-    expr (COMMA expr)*
+    expr COMMA arg_list | expr
     ;
+
+literal:
+    INT | FLOAT | STRING | struct_lit
+    ;
+
+struct_lit:
+    LBRACE expr_list_opt RBRACE
+    ;
+
+expr_list_opt:
+    expr_list | 
+    ;
+
+expr_list:
+    expr COMMA expr_list | expr
+    ;
+
 //==========================================================================================
 
 //=========================================LEXER============================================
@@ -261,7 +260,7 @@ ILLEGAL_ESCAPE:
     ;
 
 UNCLOSE_STRING:
-    '"' (ESC_SEQ | ~["\\\r\n])* (EOF | '\r' | '\n')
+    '"' (ESC_SEQ | ~["\\\r\n])* '\\'? (EOF | '\r' | '\n')
     ;
 
 //-----------------KEYWORD-------------------
