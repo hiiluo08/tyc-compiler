@@ -16,7 +16,7 @@ The TyC static semantic checker must detect and report the following error types
 4. **UndeclaredStruct** - Use of struct types that have not been declared
 5. **TypeCannotBeInferred** - `auto` without a fixable type; message is `TypeCannotBeInferred(<ctx>)` where `<ctx>` is one AST node (`str` per `src/utils/nodes.py`)
 6. **TypeMismatchInStatement** - Type incompatibilities in statements (if, while, for, return, assignment)
-7. **TypeMismatchInExpression** - Type incompatibilities in expressions (operators, function calls, member access)
+7. **TypeMismatchInExpression** - Type incompatibilities in expressions (operators, function calls, member access, struct literals against an expected struct type)
 8. **MustInLoop** - Break/continue statements outside of loop contexts
 
 ---
@@ -408,9 +408,10 @@ void valid6() {
 - `<init>`, `<condition>`, `<update>` follow their respective type rules
 - Condition must evaluate to `int` type
 
-**Assignment Statements:**
+**Assignment Statements (`ExprStmt` with `AssignExpr`):**
 - Left-hand side and right-hand side must have the same type
 - Struct assignment: both sides must be the same struct type
+- A struct literal on the right-hand side that fails arity or per-member checks against the expected struct type is **`TypeMismatchInExpression`** on that literal, not **`TypeMismatchInStatement`** for that failure alone (see **Struct literal**)
 - No type coercion in assignments (unlike some languages)
 
 **Assignment Expression Behavior:**
@@ -582,6 +583,10 @@ void assignmentExpressionValid() {
 - Number of arguments must match number of parameters
 - Argument types must match parameter types (no type coercion)
 - Result type: return type of the function
+
+**Struct literal:**
+- When a context supplies an expected struct type, the literal must have the same number of fields as the struct, and each field expression’s type must equal the corresponding member’s type (no coercion between distinct primitive types)
+- **Exception:** `TypeMismatchInExpression(<StructLiteral>)` — `<StructLiteral>` is the full struct literal node
 
 **Assignment Expression:**
 - Left-hand side must be an identifier or a member access expression (cannot be a literal or other expression)
