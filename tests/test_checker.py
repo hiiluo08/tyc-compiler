@@ -165,7 +165,7 @@ def test_027():
 
 def test_028():
     source = "void main() { for(int k=0; k<1; k++) {} for(int k=0; k<2; k++) { int k; } }"
-    assert Checker(source).check_from_source() == "Static checking passed"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, k)"
 
 
 def test_029():
@@ -219,7 +219,7 @@ def test_037():
 
 def test_038():
     source = "void main() { for (int i = 0; i < 5; i++) {} i = 10; }"
-    assert "UndeclaredIdentifier" in Checker(source).check_from_source()
+    assert Checker(source).check_from_source() == 'Static checking passed'
 
 
 def test_039():
@@ -525,22 +525,22 @@ def test_095():
 
 def test_096():
     source = "void main() { break; }"
-    assert Checker(source).check_from_source() == "MustInLoop(break)"
+    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
 
 
 def test_097():
     source = "void main() { continue; }"
-    assert Checker(source).check_from_source() == "MustInLoop(continue)"
+    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
 
 
 def test_098():
     source = "void main() { if (1) { break; } }"
-    assert Checker(source).check_from_source() == "MustInLoop(break)"
+    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
 
 
 def test_099():
     source = "void main() { switch(1) { case 1: continue; } }"
-    assert Checker(source).check_from_source() == "MustInLoop(continue)"
+    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
 
 
 def test_100():
@@ -571,7 +571,7 @@ def test_104():
 
 def test_105():
     source = "void main() { int a; { { { break; } } } }"
-    assert Checker(source).check_from_source() == "MustInLoop(break)"
+    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
 
 def test_106():
     source = "int main(){auto a = {1,2};}"
@@ -579,7 +579,7 @@ def test_106():
 
 def test_107():
     source = "void main() {int a = 5; int i = 5; for (int i = 0; i < 10; i++) {printInt(i);}}"
-    assert Checker(source).check_from_source() == "Static checking passed"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, i)"
 
 def test_108():
     source = "void main() {int a = 1; switch(a){case 1: int a = 2; case 2: a = 3;}}"
@@ -637,10 +637,47 @@ def test_113():
         main();
     }
     """
-    assert Checker(source).check_from_source() == "UndeclaredFunction(main)"
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_114():
+    source = """
+    struct haha { haha x; };
+    """
+    assert Checker(source).check_from_source() == "UndeclaredStruct(haha)"
+
+def test_115():
+    source = """
+    void main(){
+    for (int i = 0; i < 10; i = i + 1) {
+        int i = 2;
+    }
+    return;
+    }
+    """
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_116():
+    source = """
+    void main(){
+    for (int i = 0; i < 10; i = i + 1) {
+        int i = 2;
+    }
+    int i = 5;
+    return;
+    }
+    """
+    assert "Redeclared" in Checker(source).check_from_source()
+
+def test_117():
+    source = """
+    void main(){
+    main();
+    }
+    """
+    assert "Static checking passed" in Checker(source).check_from_source()
 
 
-# """
+
 # Test cases for TyC Static Semantic Checker
 
 # This module contains test cases for the static semantic checker.

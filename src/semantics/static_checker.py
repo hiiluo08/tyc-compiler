@@ -155,7 +155,12 @@ class StaticChecker(ASTVisitor):
                 raise Redeclared('Member', member.name)
 
             member_type = self.visit(member.member_type, o)
-
+            if isinstance(member_type, StructType):
+                if member_type.struct_name not in o.global_structs:
+                    raise UndeclaredStruct(member_type.struct_name)
+                if member_type.struct_name == node.name:
+                    raise UndeclaredStruct(member_type.struct_name)
+                    
             o.global_structs[node.name][member.name] = member_type
 
 
@@ -282,7 +287,6 @@ class StaticChecker(ASTVisitor):
 
     def visit_for_stmt(self, node: "ForStmt", o: CheckerContext):
         o.in_loop += 1
-        o.push_scope()
 
         if node.init:
             self.visit(node.init, o)
@@ -295,9 +299,13 @@ class StaticChecker(ASTVisitor):
         if node.update:
             self.visit(node.update, o)
         
-        self.visit(node.body, o)
+        if isinstance(node.body, BlockStmt):
+            self.visit(node.body, o)
+        else:
+            o.push_scope()
+            self.visit(node.body, o)
+            o.pop_scope()
 
-        o.pop_scope()
         o.in_loop -= 1
         
 
