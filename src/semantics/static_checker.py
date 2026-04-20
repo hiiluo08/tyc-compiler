@@ -80,7 +80,7 @@ class AutoType(Type):
         super().__init__()
 
     def accept(self, visitor, o=None):
-        return visitor.visit_auto_type(self, o)
+        return visitor.auto_type(self, o)
 
     def __str__(self):
         return "AutoType()"
@@ -90,10 +90,10 @@ class CheckerContext:
         self.local_env = [{}]
         self.global_funcs = {}
         self.global_structs = {}
-        self.in_loop = 0
-        self.in_switch = 0
+        self.control_stack = []
         self.current_func_return_type = None
         self.current_func_name = None
+        self.current_func_params = []
     
     def push_scope(self):
         self.local_env.append({})
@@ -115,15 +115,53 @@ def update_inferred_type(rhs, inferred_type, o: CheckerContext):
         for env in reversed(o.local_env):
             if rhs.name in env:
                 env[rhs.name] = inferred_type
-                return
-        
-    elif isinstance(rhs, FuncCall):
-        if rhs.name in o.global_funcs:
-            param_types, _ = o.global_funcs[rhs.name]
-            o.global_funcs[rhs.name] = (param_types, inferred_type)
-
+                return True
+    return False
 
 class StaticChecker(ASTVisitor):
+    def _is_const_int_expr(self, expr):
+        if isinstance(expr, IntLiteral):
+            return True
+        if isinstance(expr, PrefixOp):
+            if expr.operator in ['+', '-', '!']:
+                return self._is_const_int_expr(expr.operand)
+            return False
+        if isinstance(expr, BinaryOp):
+            int_ops = ['+', '-', '*', '/', '%', '==', '!=', '<', '<=', '>', '>=', '&&', '||']
+            if expr.operator in int_ops:
+                return (self._is_const_int_expr(expr.left) and self._is_const_int_expr(expr.right))
+            return False
+        return False         
+
+    def _infer_struct_literal(self, struct_name: str, literal: "StructLiteral", o: CheckerContext):
+        struct_fields = o.global_structs[struct_name]
+        if len(literal.values) != len(struct_fields):
+            return False
+        for field_type, val in zip(struct_fields.values(), literal.values):
+            val_type = self.visit(val, o)
+            if isinstance(field_type, StructType):
+                if isinstance(val_type, StructType):
+                    if field_type.struct_name != val_type.struct_name:
+                        return False
+                elif isinstance(val_type, StructLiteral):
+                    if not self._infer_struct_literal(field_type.struct_name, val, o):
+                        return False
+                elif isinstance(val_type, AutoType):
+                    if not update_inferred_type(val, field_type, o):
+                        return False
+                else:
+                    return False
+            
+            else:
+                if isinstance(val_type, AutoType):
+                    if not update_inferred_type(val, field_type, o):
+                        return False
+                elif isinstance(val_type, StructType) or isinstance(val_type, StructLiteral):
+                    return False
+                elif type(field_type) != type(val_type):
+                    return False
+        return True
+
     def check_program(self, ast):
         ctx = CheckerContext()
         ctx.initialize_builtins()
@@ -184,8 +222,18 @@ class StaticChecker(ASTVisitor):
             o.local_env[-1][param.name] = param.param_type
 
         for stmt in node.body.statements:
+            o.current_func_params = [p.name for p in node.params]
             self.visit(stmt, o)
+            o.current_func_params = []
         
+        if isinstance(o.current_func_return_type, AutoType):
+            o.current_func_return_type = VoidType()
+            o.global_funcs[node.name] = (param_types, VoidType())
+        
+        for var_type in o.local_env[-1].values():
+            if isinstance(var_type, AutoType):
+                raise TypeCannotBeInferred(node.body)
+
         o.pop_scope()
     
 
@@ -217,83 +265,112 @@ class StaticChecker(ASTVisitor):
         for stmt in node.statements:
             self.visit(stmt, o)
         
+        for var_type in o.local_env[-1].values():
+            if isinstance(var_type, AutoType):
+                raise TypeCannotBeInferred(node)
+
         o.pop_scope()
 
     def visit_var_decl(self, node: "VarDecl", o: CheckerContext):
         if node.name in o.local_env[-1]:
             raise Redeclared('Variable', node.name)
-        
+
+        if node.name in o.current_func_params:
+            raise Redeclared('Variable', node.name)
+
         lhs_type = self.visit(node.var_type, o) if node.var_type else AutoType()
+
+        if isinstance(lhs_type, StructType):
+            if lhs_type.struct_name not in o.global_structs:
+                raise UndeclaredStruct(lhs_type.struct_name)
 
         if node.init_value:
             rhs_type = self.visit(node.init_value, o)
 
             if isinstance(lhs_type, AutoType):
-                if isinstance(rhs_type, AutoType):
+                if isinstance(rhs_type, AutoType) or isinstance(rhs_type, StructLiteral):
                     raise TypeCannotBeInferred(node)
-                if isinstance(rhs_type, StructLiteral):
-                    raise TypeCannotBeInferred(node)
-                lhs_type = rhs_type
+                else:
+                    lhs_type = rhs_type
+            
             elif isinstance(lhs_type, StructType):
-                if not isinstance(rhs_type, StructLiteral):
-                    raise TypeMismatchInStatement(node)
-                
-                struct_fields = o.global_structs[lhs_type.struct_name]
-                if len(rhs_type.values) != len(struct_fields):
-                    raise TypeMismatchInStatement(node)
-                
-                for val, field_type in zip(rhs_type.values, struct_fields.values()):
-                    val_type = self.visit(val, o)
-                    if isinstance(val_type, StructLiteral):
-                        pass
-                    elif type(val_type) != type(field_type):
+                if isinstance(rhs_type, StructType):
+                    if lhs_type.struct_name != rhs_type.struct_name:
                         raise TypeMismatchInStatement(node)
-                    elif isinstance(field_type, StructType) and val_type.struct_name != field_type.struct_name:
-                        raise TypeMismatchInStatement(node)
+                
+                elif isinstance(rhs_type, AutoType):
+                    if not update_inferred_type(node.init_value, lhs_type, o):
+                        raise TypeCannotBeInferred(node.init_value)
+                    rhs_type = lhs_type
+                
+                elif isinstance(rhs_type, StructLiteral):
+                    if not self._infer_struct_literal(lhs_type.struct_name, node.init_value, o):
+                        raise TypeMismatchInExpression(node.init_value)
+
+                else:
+                    raise TypeMismatchInStatement(node)
+            
             else:
-                if isinstance(rhs_type, AutoType):
-                    update_inferred_type(node.init_value, lhs_type, o)
+                if isinstance(rhs_type, StructType) or isinstance(rhs_type, StructLiteral):
+                    raise TypeMismatchInStatement(node)
+
+                elif isinstance(rhs_type, AutoType):
+                    if not update_inferred_type(node.init_value, lhs_type, o):
+                        raise TypeCannotBeInferred(node.init_value)
+                    rhs_type = lhs_type
+
                 else:
                     if type(lhs_type) != type(rhs_type):
                         raise TypeMismatchInStatement(node)
-                    
-                    if isinstance(lhs_type, StructType) and isinstance(rhs_type, StructType):
-                        if lhs_type.struct_name != rhs_type.struct_name:
-                            raise TypeMismatchInStatement(node)
-        
+
         o.local_env[-1][node.name] = lhs_type 
 
 
     def visit_if_stmt(self, node: "IfStmt", o: CheckerContext):
         condition_type = self.visit(node.condition, o)
-        if not isinstance(condition_type, IntType):
+        if isinstance(condition_type, AutoType):
+            if not update_inferred_type(node.condition, IntType(), o):
+                raise TypeCannotBeInferred(node.condition)
+        elif not isinstance(condition_type, IntType):
             raise TypeMismatchInStatement(node)
 
+        o.push_scope()
         self.visit(node.then_stmt, o)
+        o.pop_scope()
         
         if node.else_stmt:
+            o.push_scope()
             self.visit(node.else_stmt, o)
+            o.pop_scope()
 
     def visit_while_stmt(self, node: "WhileStmt", o: CheckerContext):
-        o.in_loop += 1
+        o.control_stack.append('loop')
 
         condition_type = self.visit(node.condition, o)
-        if not isinstance(condition_type, IntType):
+        if isinstance(condition_type, AutoType):
+            if not update_inferred_type(node.condition, IntType(), o):
+                raise TypeCannotBeInferred(node.condition)
+        elif not isinstance(condition_type, IntType):
             raise TypeMismatchInStatement(node)
         
+        o.push_scope()
         self.visit(node.body, o)
+        o.pop_scope()
         
-        o.in_loop -= 1
+        o.control_stack.pop()
 
     def visit_for_stmt(self, node: "ForStmt", o: CheckerContext):
-        o.in_loop += 1
+        o.control_stack.append('loop')
 
         if node.init:
             self.visit(node.init, o)
         
         if node.condition:
             condition_type = self.visit(node.condition, o)
-            if not isinstance(condition_type, IntType):
+            if isinstance(condition_type, AutoType):
+                if not update_inferred_type(node.condition, IntType(), o):
+                    raise TypeCannotBeInferred(node.condition)
+            elif not isinstance(condition_type, IntType):
                 raise TypeMismatchInStatement(node)
         
         if node.update:
@@ -306,26 +383,53 @@ class StaticChecker(ASTVisitor):
             self.visit(node.body, o)
             o.pop_scope()
 
-        o.in_loop -= 1
+        o.control_stack.pop()
         
 
     def visit_switch_stmt(self, node: "SwitchStmt", o: CheckerContext):
-        o.in_switch += 1
+        o.control_stack.append('switch')
 
         expr_type = self.visit(node.expr, o)
-        if not isinstance(expr_type, IntType):
+        if isinstance(expr_type, AutoType):
+            if not update_inferred_type(node.expr, IntType(), o):
+                raise TypeCannotBeInferred(node.expr)
+        elif not isinstance(expr_type, IntType):
             raise TypeMismatchInStatement(node)
 
+        o.push_scope()
         for case in node.cases:
             self.visit(case, o)
+            # try: 
+            #     self.visit(case, o)
+            # except TypeMismatchInStatement as e:
+            #     if e.stmt is case:
+            #         raise TypeMismatchInStatement(node)
+            #     raise
+            
         
         if node.default_case:
             self.visit(node.default_case, o)
+            # try:
+            #     self.visit(node.default_case, o)
+            # except TypeMismatchInStatement as e:
+            #     if e.stmt is node.default_case:
+            #         raise TypeMismatchInStatement(node)
+            #     raise
+        
+        for var_type in o.local_env[-1].values():
+            if isinstance(var_type, AutoType):
+                raise TypeCannotBeInferred(node)
 
-        o.in_switch -= 1
+        o.pop_scope()
+
+        o.control_stack.pop()
 
     def visit_case_stmt(self, node: "CaseStmt", o: CheckerContext):
         case_type = self.visit(node.expr, o)
+
+        if not self._is_const_int_expr(node.expr):
+            raise TypeMismatchInStatement(node)
+
         if not isinstance(case_type, IntType):
             raise TypeMismatchInStatement(node)
 
@@ -337,13 +441,14 @@ class StaticChecker(ASTVisitor):
             self.visit(stmt, o)
 
     def visit_break_stmt(self, node: "BreakStmt", o: CheckerContext):
-        if o.in_loop or o.in_switch:
+        if o.control_stack:
             return
         raise MustInLoop(node)
 
     def visit_continue_stmt(self, node: "ContinueStmt", o: CheckerContext):
-        if o.in_loop:
-            return
+        if o.control_stack:
+            if o.control_stack[-1] == 'loop':
+                return
         raise MustInLoop(node)
 
     def visit_return_stmt(self, node: "ReturnStmt", o: CheckerContext):
@@ -351,42 +456,55 @@ class StaticChecker(ASTVisitor):
             if node.expr:
                 raise TypeMismatchInStatement(node)
             return
-        if not node.expr:
-            raise TypeMismatchInStatement(node)
+        else:
+            if not node.expr:
+                if isinstance(o.current_func_return_type, AutoType):
+                    return  # bare return in auto function → infer void at end of func
+                raise TypeMismatchInStatement(node)
         
         return_type = self.visit(node.expr, o)
         
         if isinstance(o.current_func_return_type, AutoType):
-            if isinstance(return_type, AutoType):
+            if isinstance(return_type, AutoType) or isinstance(return_type, StructLiteral):
                 raise TypeCannotBeInferred(node)
             o.current_func_return_type = return_type
             param_types, _ = o.global_funcs[o.current_func_name]
             o.global_funcs[o.current_func_name] = (param_types, return_type)
-        else:
-            if isinstance(return_type, AutoType):
-                raise TypeMismatchInStatement(node)
-            if isinstance(o.current_func_return_type, StructType) and isinstance(return_type, StructLiteral):
-                struct_fields = o.global_structs[o.current_func_return_type.struct_name]
-                if len(return_type.values) != len(struct_fields):
+
+        elif isinstance(o.current_func_return_type, StructType):
+            if isinstance(return_type, StructLiteral):
+                if not self._infer_struct_literal(o.current_func_return_type.struct_name, return_type, o):
                     raise TypeMismatchInStatement(node)
-                for val, field_type in zip(return_type.values, struct_fields.values()):
-                    val_type = self.visit(val, o)
-                    if isinstance(val_type, StructLiteral):
-                        pass
-                    elif type(val_type) != type(field_type):
-                        raise TypeMismatchInStatement(node)
-                    elif isinstance(field_type, StructType) and val_type.struct_name != field_type.struct_name:
-                        raise TypeMismatchInStatement(node)
-                return
-            if isinstance(o.current_func_return_type, StructType) and isinstance(return_type, StructType):
+            elif isinstance(return_type, StructType):
                 if return_type.struct_name != o.current_func_return_type.struct_name:
                     raise TypeMismatchInStatement(node)
+            elif isinstance(return_type, AutoType):
+                if not update_inferred_type(node.expr, o.current_func_return_type, o):
+                    raise TypeCannotBeInferred(node.expr)
+                return
+            else:
+                raise TypeMismatchInStatement(node)
+            
+        else:
+            if isinstance(return_type, AutoType):
+                if not update_inferred_type(node.expr, o.current_func_return_type, o):
+                    raise TypeCannotBeInferred(node.expr)
                 return
             if type(return_type) != type(o.current_func_return_type):
                 raise TypeMismatchInStatement(node)
 
     def visit_expr_stmt(self, node: "ExprStmt", o: CheckerContext):
-        self.visit(node.expr, o)
+        if isinstance(node.expr, AssignExpr):
+            try:
+                self.visit(node.expr, o)
+            except TypeMismatchInExpression as e:
+                if e.expr is node.expr:
+                    raise TypeMismatchInStatement(node)
+                raise
+        else:
+            expr_type = self.visit(node.expr, o)
+            if isinstance(expr_type, AutoType):
+                raise TypeCannotBeInferred(node)
 
     # Expressions
     def visit_binary_op(self, node: "BinaryOp", o: CheckerContext):
@@ -399,14 +517,27 @@ class StaticChecker(ASTVisitor):
         num_type = (IntType, FloatType)
 
         if isinstance(lhs_type, AutoType) or isinstance(rhs_type, AutoType):
-            if node.operator in arithmetic_op or node.operator in relational_op:
+            if node.operator in arithmetic_op:
+                if isinstance(node.left, IntLiteral):
+                    if not update_inferred_type(node.right, IntType(), o):
+                        raise TypeCannotBeInferred(node.right)
+                    rhs_type = IntType()
+                elif isinstance(node.right, IntLiteral):
+                    if not update_inferred_type(node.left, IntType(), o):
+                        raise TypeCannotBeInferred(node.left)
+                    lhs_type = IntType()
+                else:
+                    raise TypeCannotBeInferred(node)
+            elif node.operator in relational_op:
                 raise TypeCannotBeInferred(node)
             elif node.operator in logical_op or node.operator == '%':
                 if isinstance(lhs_type, AutoType):
-                    update_inferred_type(node.left, IntType(), o)
+                    if not update_inferred_type(node.left, IntType(), o):
+                        raise TypeCannotBeInferred(node.left)
                     lhs_type = IntType()
                 if isinstance(rhs_type, AutoType):
-                    update_inferred_type(node.right, IntType(), o)
+                    if not update_inferred_type(node.right, IntType(), o):
+                        raise TypeCannotBeInferred(node.right)
                     rhs_type = IntType()
 
         if node.operator in arithmetic_op:
@@ -469,71 +600,57 @@ class StaticChecker(ASTVisitor):
         rhs_type = self.visit(node.rhs, o)
 
         if isinstance(node.lhs, Identifier) or isinstance(node.lhs, MemberAccess):
-            if isinstance(lhs_type, AutoType) and isinstance(rhs_type, AutoType):
-                raise TypeCannotBeInferred(node)
-            
             if isinstance(lhs_type, AutoType):
-                update_inferred_type(node.lhs, rhs_type, o)
-                lhs_type = rhs_type
-            if isinstance(rhs_type, AutoType):
-                update_inferred_type(node.rhs, lhs_type, o)
-                rhs_type = lhs_type
+                if isinstance(rhs_type, StructLiteral) or isinstance(rhs_type, AutoType):
+                    raise TypeCannotBeInferred(node)
+                else:
+                    if not update_inferred_type(node.lhs, rhs_type, o):
+                        raise TypeCannotBeInferred(node.lhs)
+                    lhs_type = rhs_type
+                
+            elif isinstance(lhs_type, StructType):
+                if isinstance(rhs_type, AutoType):
+                    if not update_inferred_type(node.rhs, lhs_type, o):
+                        raise TypeCannotBeInferred(node.rhs)
+                    rhs_type = lhs_type
+                elif isinstance(rhs_type, StructType):
+                    if lhs_type.struct_name != rhs_type.struct_name:
+                        raise TypeMismatchInExpression(node)
+                elif isinstance(rhs_type, StructLiteral):
+                    if not self._infer_struct_literal(lhs_type.struct_name, node.rhs, o):
+                        raise TypeMismatchInExpression(node.rhs)
+
+                else:
+                    raise TypeMismatchInExpression(node)
             
-            if type(lhs_type) is not type(rhs_type):
-                raise TypeMismatchInExpression(node)
-            
-            if isinstance(lhs_type, StructType):
-                if lhs_type.struct_name != rhs_type.struct_name:
+            else:
+                if isinstance(rhs_type, AutoType):
+                    if not update_inferred_type(node.rhs, lhs_type, o):
+                        raise TypeCannotBeInferred(node.rhs)
+                    rhs_type = lhs_type
+                
+                elif isinstance(rhs_type, StructType) or isinstance(rhs_type, StructLiteral):
                     raise TypeMismatchInExpression(node)
                 
+                elif type(lhs_type) != type(rhs_type):
+                    raise TypeMismatchInExpression(node)
+            
             return lhs_type
-            
+
         raise TypeMismatchInExpression(node)
-
-    def visit_assign_stmt(self, node, o: CheckerContext):
-        assign_expr = node
-        for k, v in vars(node).items():
-            if k not in ['line', 'column'] and v is not None:
-                assign_expr = v
-                break
-
-        lhs_type = self.visit(assign_expr.lhs, o)
-        rhs_type = self.visit(assign_expr.rhs, o)
-
-        if isinstance(assign_expr.lhs, Identifier) or isinstance(assign_expr.lhs, MemberAccess):
-            if isinstance(lhs_type, AutoType) and isinstance(rhs_type, AutoType):
-                raise TypeCannotBeInferred(node)
-            
-            if isinstance(lhs_type, AutoType):
-                update_inferred_type(assign_expr.lhs, rhs_type, o)
-                lhs_type = rhs_type
-            if isinstance(rhs_type, AutoType):
-                update_inferred_type(assign_expr.rhs, lhs_type, o)
-                rhs_type = lhs_type
-            
-            if type(lhs_type) is not type(rhs_type):
-                raise TypeMismatchInStatement(node)
-            
-            if isinstance(lhs_type, StructType):
-                if lhs_type.struct_name != rhs_type.struct_name:
-                    raise TypeMismatchInStatement(node)
-                
-            return
-            
-        raise TypeMismatchInStatement(node)
 
     def visit_member_access(self, node: "MemberAccess", o: CheckerContext):
         obj_type = self.visit(node.obj, o)
 
         if isinstance(obj_type, AutoType):
-            raise TypeCannotBeInferred(node.obj)
+            raise TypeCannotBeInferred(node)
         
         if not isinstance(obj_type, StructType):
             raise TypeMismatchInExpression(node)
         
         struct_fields = o.global_structs[obj_type.struct_name]
         if node.member not in struct_fields:
-            raise UndeclaredIdentifier(node.member)
+            raise TypeMismatchInExpression(node)
         
         return struct_fields[node.member]
 
@@ -543,27 +660,36 @@ class StaticChecker(ASTVisitor):
 
         param_types, return_type = o.global_funcs[node.name]
 
-        arg_types = []
         for arg in node.args:
-            arg_types.append(self.visit(arg, o))
+            self.visit(arg, o)
 
         if len(node.args) != len(param_types):
             raise TypeMismatchInExpression(node)
-        
-        for i in range(len(param_types)):
-            param_type = param_types[i]
-            arg = node.args[i]
-            arg_type = arg_types[i]
+
+        for param_type, arg in zip(param_types, node.args):
+            arg_type = self.visit(arg, o)
 
             if isinstance(arg_type, AutoType):
-                update_inferred_type(arg, param_type, o)
-            else:
-                if type(param_type) is not type(arg_type):
+                if not update_inferred_type(arg, param_type, o):
+                    raise TypeCannotBeInferred(arg)
+                arg_type = param_type
+            
+            elif isinstance(arg_type, StructType):
+                if not isinstance(param_type, StructType):
                     raise TypeMismatchInExpression(node)
-                
-                if isinstance(param_type, StructType) and param_type.struct_name != arg_type.struct_name:
+                if arg_type.struct_name != param_type.struct_name:
                     raise TypeMismatchInExpression(node)
             
+            elif isinstance(arg_type, StructLiteral):
+                if not isinstance(param_type, StructType):
+                    raise TypeMismatchInExpression(node)
+                if not self._infer_struct_literal(param_type.struct_name, arg, o):
+                    raise TypeMismatchInExpression(node)
+                
+            else:
+                if type(param_type) != type(arg_type):
+                    raise TypeMismatchInExpression(node)
+    
         return return_type
 
     def visit_identifier(self, node: "Identifier", o: CheckerContext):
