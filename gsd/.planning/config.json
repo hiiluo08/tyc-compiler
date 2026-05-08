@@ -1,0 +1,36 @@
+{
+  "projectName": "tyc-web-compiler-gsd-variant",
+  "planningRoot": "gsd/.planning",
+  "docsRoot": "gsd/docs",
+  "implementationRoot": "gsd",
+  "workflow": {
+    "mode": "gsd-six-step",
+    "sequence": [
+      "initialize",
+      "discuss",
+      "plan",
+      "execute",
+      "verify",
+      "ship"
+    ],
+    "requireRoadmapApprovalBeforeBuild": true
+  },
+  "isolation": {
+    "strictScope": "gsd-only",
+    "allowReadOutsideScope": true,
+    "allowWriteOutsideScope": false,
+    "forbiddenRoots": [
+      "src",
+      "tests",
+      "run.py",
+      "requirements.txt",
+      "CLAUDE.md",
+      "WEB_COMPILER_SPEC.md",
+      ".planning"
+    ]
+  },
+  "deployment": {
+    "frontend": "vercel",
+    "runner": "external-docker-host"
+  }
+}

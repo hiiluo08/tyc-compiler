@@ -1460,3 +1460,13 @@ def test_191():
     }
     """
     assert Checker(source).check_from_source() == "TypeCannotBeInferred(ExprStmt(Identifier(a)))"
+
+def test_192():
+    source = """
+    foo(int a, int b) {return a + b;}
+    void main(){
+        auto a; auto b;
+        printInt(foo(a, b));
+    }
+    """
+    assert Checker(source).check_from_source() == "Static checking passed"

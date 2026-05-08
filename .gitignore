@@ -25,3 +25,7 @@ env/
 reports/
 *.class
 *.j
+.gstack/
+
+.vercel
+.env*.local

@@ -1,0 +1,24 @@
+{
+  "status_lines": [
+    " M src/astgen/ast_generation.py",
+    " M src/codegen/codegen.py",
+    " M src/codegen/emitter.py",
+    " M tests/test_checker.py",
+    " M tests/test_codegen.py",
+    "?? .claude/",
+    "?? CLAUDE.md",
+    "?? WEB_COMPILER_SPEC.md",
+    "?? gsd/",
+    "?? gstack/",
+    "?? openspec/"
+  ],
+  "dirty_non_gsd_hashes": {
+    "src/astgen/ast_generation.py": "8e2114a4effb07abbd1c6f9bc95a51cce3f7b929",
+    "src/codegen/codegen.py": "3d4beae1ca8e6994f2f467e82dd184416013d2b8",
+    "src/codegen/emitter.py": "057f908c95f97d31a894138166e0928bb0dcac17",
+    "tests/test_checker.py": "372ae86c7d517db6929adb76cc27234f650a136c",
+    "tests/test_codegen.py": "3f73205c826aa14a8f63562ac646bf4ae0434f67",
+    "CLAUDE.md": "f1fa1a2e5af929513906ec81bba1959911ee96cd",
+    "WEB_COMPILER_SPEC.md": "eee254443fed52c1b8876ce1fd29dcee169ba0bf"
+  }
+}
