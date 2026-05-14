@@ -60,24 +60,6 @@ TyC source -> ANTLR lexer/parser -> ASTGeneration -> StaticChecker -> CodeGenera
 - Checker tests call `Checker(source).check_from_source()` and usually compare either `"Static checking passed"` or semantic error strings/substrings.
 - Codegen tests call `ASTGenerator` directly and then `CodeGenerator().generate_and_run(...)`; they do not run the static checker first, so codegen assumes semantically valid input. The harness assembles generated Jasmin with `src/runtime/jasmin.jar`, runs `java -cp src/runtime TyC`, and strips stdout.
 
-## gstack (REQUIRED — global install)
-
-**Before doing ANY work, verify gstack is installed:**
-
-```bash
-test -d ~/.claude/skills/gstack/bin && echo "GSTACK_OK" || echo "GSTACK_MISSING"
-```
-
-If GSTACK_MISSING: STOP. Do not proceed. Tell the user:
-
-> gstack is required for all AI-assisted work in this repo.
-> Install it:
-> ```bash
-> git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
-> cd ~/.claude/skills/gstack && ./setup --team
-> ```
-> Then restart your AI coding tool.
-
 Do not skip skills, ignore gstack errors, or work around missing gstack.
 
 Using gstack skills: After install, skills like /qa, /ship, /review, /investigate,

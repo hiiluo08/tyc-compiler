@@ -1470,3 +1470,48 @@ def test_192():
     }
     """
     assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_193():
+    source = """
+    void main() {
+        int i = 2;
+        switch (i) {
+            default: int i = 3;
+        }
+        printInt(i);
+    }
+    """
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_194():
+    source = """
+    void main(){
+        printInt(3 == 3.0);
+    }
+    """
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_195():
+    source = """
+    void main(){
+        float a = 5;
+        printFloat(a);
+    }
+    """
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(FloatType(), a = IntLiteral(5)))"
+
+def test_196():
+    source = """
+    struct Inner {
+        int val;
+    };
+    struct Outer {
+        Inner inner;
+        int extra;
+    };
+    void main(){
+        Outer o = {{5}, 10};
+        printInt(o.inner.val + o.extra);
+    }
+    """
+    assert Checker(source).check_from_source() == "Static checking passed"

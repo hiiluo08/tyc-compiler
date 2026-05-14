@@ -48,6 +48,7 @@ class CodeGenerator(BaseVisitor):
             if isinstance(stmt, VarDecl):
                 if stmt.var_type is None and stmt.init_value is None:
                     resolutions[stmt.name] = None  # unresolved yet
+                    temp_sym.append(Symbol(stmt.name, IntType(), Index(len(temp_sym))))
                 else:
                     t = stmt.var_type or self._infer_type(stmt.init_value, Access(None, temp_sym))
                     temp_sym.append(Symbol(stmt.name, t, Index(len(temp_sym))))
@@ -89,12 +90,32 @@ class CodeGenerator(BaseVisitor):
             return self._find_first_return_expr(stmt.body)
         return None
 
+    def _collect_local_syms(self, stmt, existing_syms: list) -> list:
+        """Collect VarDecl symbols from a block's top-level statements."""
+        syms = list(existing_syms)
+        if not isinstance(stmt, BlockStmt):
+            return syms
+        for s in stmt.statements:
+            if isinstance(s, VarDecl):
+                if s.var_type:
+                    t = s.var_type
+                elif s.init_value is not None:
+                    try:
+                        t = self._infer_type(s.init_value, Access(None, syms))
+                    except Exception:
+                        t = IntType()
+                else:
+                    t = IntType()
+                syms.append(Symbol(s.name, t, Index(len(syms))))
+        return syms
+
     def _infer_func_return_type(self, node: FuncDecl) -> Type:
         """Infer return type from first return statement when not declared."""
         param_syms = [Symbol(p.name, p.param_type, Index(i)) for i, p in enumerate(node.params)]
+        all_syms = self._collect_local_syms(node.body, param_syms)
         expr = self._find_first_return_expr(node.body)
         if expr is not None:
-            return self._infer_type(expr, Access(None, param_syms))
+            return self._infer_type(expr, Access(None, all_syms))
         return VoidType()
 
     def _infer_type(self, node: Expr, o: Access):
@@ -242,10 +263,11 @@ class CodeGenerator(BaseVisitor):
             
             if pushed:
                 self._struct_target.pop()
-            
-            if is_float_type(var_type) and is_int_type(rhs_type):
-                rhs_code += self.emit.emit_i2f(frame)
-            
+
+            if is_struct_type(var_type) and not isinstance(node.init_value, StructLiteral):
+                sn = var_type.struct_name
+                rhs_code += self.emit.jvm.emitINVOKEVIRTUAL(f'{sn}/clone', f'()L{sn};')
+
             self.emit.print_out(rhs_code)
             self.emit.print_out(self.emit.emit_write_var(node.name, var_type, idx, frame))
         else:
@@ -418,6 +440,10 @@ class CodeGenerator(BaseVisitor):
         if is_float_type(lhs_type) and is_int_type(rhs_type):
             rhs_code += self.emit.emit_i2f(frame)
 
+        if is_struct_type(lhs_type) and not isinstance(node.rhs, StructLiteral):
+            sn = lhs_type.struct_name
+            rhs_code += self.emit.jvm.emitINVOKEVIRTUAL(f'{sn}/clone', f'()L{sn};')
+
         if isinstance(node.lhs, Identifier):
             idx = lhs_sym.value.value
             code = (
@@ -457,6 +483,10 @@ class CodeGenerator(BaseVisitor):
             if pushed:
                 self._struct_target.pop()
 
+            if is_struct_type(param_type) and not isinstance(arg, StructLiteral):
+                sn = param_type.struct_name
+                arg_code += self.emit.jvm.emitINVOKEVIRTUAL(f'{sn}/clone', f'()L{sn};')
+
             code += arg_code
         code += self.emit.emit_invoke_static(f"{fn_sym.value.value}/{node.name}", fn_type, frame)
         return code, fn_type.return_type
@@ -484,7 +514,7 @@ class CodeGenerator(BaseVisitor):
         # Emit members
         for member in node.members:
             jvm_type = struct_emitter.get_jvm_type(member.member_type)
-            struct_emitter.print_out(f'.field public {member.name} {jvm_type}\n')
+            struct_emitter.print_out(f".field public '{member.name}' {jvm_type}\n")
         
         # Constructor
         max_stack = 1
@@ -515,6 +545,25 @@ class CodeGenerator(BaseVisitor):
                 struct_emitter.print_out(struct_emitter.jvm.emitPUTFIELD(f'{node.name}/{member.name}', jvm_member_type))
 
         struct_emitter.print_out(struct_emitter.jvm.emitRETURN())
+        struct_emitter.print_out(struct_emitter.jvm.emitENDMETHOD())
+
+        # Clone method for deep copy on struct assignment
+        struct_emitter.print_out(struct_emitter.jvm.emitMETHOD("clone", f"()L{node.name};", False))
+        struct_emitter.print_out(struct_emitter.jvm.emitLIMITSTACK(3))
+        struct_emitter.print_out(struct_emitter.jvm.emitLIMITLOCAL(1))
+        struct_emitter.print_out(struct_emitter.jvm.emitNEW(node.name))
+        struct_emitter.print_out(struct_emitter.jvm.emitDUP())
+        struct_emitter.print_out(struct_emitter.jvm.emitINVOKESPECIAL(f'{node.name}/<init>', "()V"))
+        for member in node.members:
+            jvm_member_type = struct_emitter.get_jvm_type(member.member_type)
+            struct_emitter.print_out(struct_emitter.jvm.emitDUP())
+            struct_emitter.print_out(struct_emitter.jvm.emitALOAD(0))
+            struct_emitter.print_out(struct_emitter.jvm.emitGETFIELD(f'{node.name}/{member.name}', jvm_member_type))
+            if is_struct_type(member.member_type):
+                inner_name = member.member_type.struct_name
+                struct_emitter.print_out(struct_emitter.jvm.emitINVOKEVIRTUAL(f'{inner_name}/clone', f'()L{inner_name};'))
+            struct_emitter.print_out(struct_emitter.jvm.emitPUTFIELD(f'{node.name}/{member.name}', jvm_member_type))
+        struct_emitter.print_out(struct_emitter.jvm.emitARETURN())
         struct_emitter.print_out(struct_emitter.jvm.emitENDMETHOD())
 
         # Epilog - close class
@@ -785,7 +834,11 @@ class CodeGenerator(BaseVisitor):
 
             if is_float_type(field_type) and is_int_type(val_type):
                 val_code += self.emit.emit_i2f(frame)
-            
+
+            if is_struct_type(field_type) and not isinstance(value_expr, StructLiteral):
+                sn = field_type.struct_name
+                val_code += self.emit.jvm.emitINVOKEVIRTUAL(f'{sn}/clone', f'()L{sn};')
+
             code += val_code
             code += self.emit.emit_put_field(f'{struct_name}/{field_name}', field_type, frame)
         

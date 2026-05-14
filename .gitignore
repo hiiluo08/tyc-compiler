@@ -29,3 +29,5 @@ reports/
 
 .vercel
 .env*.local
+CLAUDE.md
+WEB_COMPILER_SPEC.md

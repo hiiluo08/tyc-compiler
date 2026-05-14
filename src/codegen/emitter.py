@@ -4,6 +4,7 @@ High-level code emission with type conversion, constant loading, variable operat
 """
 
 import os
+import re
 from typing import List, Optional, Union
 from .jasmin_code import JasminCode
 from .error import IllegalOperandException
@@ -165,10 +166,9 @@ class Emitter:
             return self.emit_push_iconst(in_, frame)
         elif is_string_type(typ):
             frame.push()
-            # String literals - in_ already contains the string value (without quotes)
-            # For JVM LDC, we need to properly escape the string
-            # Escape backslashes and quotes
-            escaped = in_.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\t', '\\t')
+            _tyc_esc = {'n': '\n', 't': '\t', 'b': '\b', 'f': '\f', 'r': '\r', '"': '"', '\\': '\\'}
+            actual = re.sub(r'\\(.)', lambda m: _tyc_esc.get(m.group(1), m.group(1)), in_)
+            escaped = actual.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\t', '\\t')
             return self.jvm.emitLDC(f'"{escaped}"')
         else:
             raise IllegalOperandException(f"Unsupported constant type: {type(typ)}")

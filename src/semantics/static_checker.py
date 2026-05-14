@@ -446,9 +446,8 @@ class StaticChecker(ASTVisitor):
         raise MustInLoop(node)
 
     def visit_continue_stmt(self, node: "ContinueStmt", o: CheckerContext):
-        if o.control_stack:
-            if o.control_stack[-1] == 'loop':
-                return
+        if 'loop' in o.control_stack:
+            return
         raise MustInLoop(node)
 
     def visit_return_stmt(self, node: "ReturnStmt", o: CheckerContext):

@@ -2,7 +2,7 @@
 Test cases for TyC code generation.
 
 Each test compiles TyC source text through the full pipeline:
-  source -> lexer -> parser -> AST -> Jasmin -> JVM -> stdout
+  source -> lexer -> parser -> AST -> static check -> Jasmin -> JVM -> stdout
 
 Output is stripped of leading/trailing whitespace by the harness.
 """
@@ -13,7 +13,7 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tests.utils import ASTGenerator, CodeGenerator
+from tests.utils import ASTGenerator, Checker, CodeGenerator
 
 
 def run(src, input_data=""):
@@ -76,7 +76,7 @@ def test_010():
 
 
 # ============================================================================
-# 2. Variables & assignment (011-020)
+# 2. Variables & assignment (011-019)
 # ============================================================================
 
 def test_011():
@@ -115,270 +115,265 @@ def test_017():
 
 
 def test_018():
-    """int-to-float coercion on initialization"""
-    assert run("void main() { float x = 5; printFloat(x); }") == "5.0"
-
-
-def test_019():
     """assignment expression used in a larger expression"""
     assert run("void main() { int a = 0; printInt((a = 4) + 1); }") == "5"
 
 
-def test_020():
+def test_019():
     """copy one variable into another"""
     assert run("void main() { int a = 3; int b = a; printInt(b); }") == "3"
 
 
 # ============================================================================
-# 3. Integer arithmetic (021-030)
+# 3. Integer arithmetic (020-029)
 # ============================================================================
 
-def test_021():
+def test_020():
     """addition"""
     assert run("void main() { printInt(2 + 3); }") == "5"
 
 
-def test_022():
+def test_021():
     """subtraction"""
     assert run("void main() { printInt(10 - 4); }") == "6"
 
 
-def test_023():
+def test_022():
     """multiplication"""
     assert run("void main() { printInt(6 * 7); }") == "42"
 
 
-def test_024():
+def test_023():
     """integer division truncates"""
     assert run("void main() { printInt(20 / 6); }") == "3"
 
 
-def test_025():
+def test_024():
     """modulo"""
     assert run("void main() { printInt(10 % 3); }") == "1"
 
 
-def test_026():
+def test_025():
     """precedence: * before +"""
     assert run("void main() { printInt(2 + 3 * 4); }") == "14"
 
 
-def test_027():
+def test_026():
     """left associativity of subtraction"""
     assert run("void main() { printInt(10 - 3 - 2); }") == "5"
 
 
-def test_028():
+def test_027():
     """subtraction yields negative result"""
     assert run("void main() { printInt(3 - 10); }") == "-7"
 
 
-def test_029():
+def test_028():
     """division result is zero"""
     assert run("void main() { printInt(3 / 7); }") == "0"
 
 
-def test_030():
+def test_029():
     """compound arithmetic: (8 + 4) / (6 - 4)"""
     assert run("void main() { printInt((8 + 4) / (6 - 4)); }") == "6"
 
 
 # ============================================================================
-# 4. Float arithmetic & int->float coercion (031-040)
+# 4. Float arithmetic & int->float coercion (030-039)
 # ============================================================================
 
-def test_031():
+def test_030():
     """float addition"""
     assert run("void main() { printFloat(1.5 + 2.5); }") == "4.0"
 
 
-def test_032():
+def test_031():
     """float subtraction"""
     assert run("void main() { printFloat(5.5 - 1.25); }") == "4.25"
 
 
-def test_033():
+def test_032():
     """float multiplication"""
     assert run("void main() { printFloat(2.0 * 3.5); }") == "7.0"
 
 
-def test_034():
+def test_033():
     """float division"""
     assert run("void main() { printFloat(5.0 / 2.0); }") == "2.5"
 
 
-def test_035():
+def test_034():
     """int + float coerces int to float"""
     assert run("void main() { printFloat(2 + 0.5); }") == "2.5"
 
 
-def test_036():
+def test_035():
     """float + int coerces int to float"""
     assert run("void main() { printFloat(0.25 + 1); }") == "1.25"
 
 
-def test_037():
+def test_036():
     """int / float yields float division"""
     assert run("void main() { printFloat(1 / 2.0); }") == "0.5"
 
 
-def test_038():
+def test_037():
     """mixed precedence with coercion"""
     assert run("void main() { printFloat(1.0 + 2 * 1.5); }") == "4.0"
 
 
-def test_039():
+def test_038():
     """float variable updated by division"""
     assert run("void main() { float x = 10.0; x = x / 4.0; printFloat(x); }") == "2.5"
 
 
-def test_040():
+def test_039():
     """negate a float expression"""
     assert run("void main() { printFloat(-(1.5 + 2.5)); }") == "-4.0"
 
 
 # ============================================================================
-# 5. Relational operators (041-048)
+# 5. Relational operators (040-047)
 # ============================================================================
 
-def test_041():
+def test_040():
     """less than true"""
     assert run("void main() { if (1 < 2) printInt(1); else printInt(0); }") == "1"
 
 
-def test_042():
+def test_041():
     """less than false"""
     assert run("void main() { if (3 < 2) printInt(1); else printInt(0); }") == "0"
 
 
-def test_043():
+def test_042():
     """less-or-equal at boundary"""
     assert run("void main() { if (5 <= 5) printInt(1); else printInt(0); }") == "1"
 
 
-def test_044():
+def test_043():
     """greater than true"""
     assert run("void main() { if (10 > 3) printInt(1); else printInt(0); }") == "1"
 
 
-def test_045():
+def test_044():
     """greater-or-equal false"""
     assert run("void main() { if (2 >= 7) printInt(1); else printInt(0); }") == "0"
 
 
-def test_046():
+def test_045():
     """equality true"""
     assert run("void main() { if (4 == 4) printInt(1); else printInt(0); }") == "1"
 
 
-def test_047():
+def test_046():
     """inequality true"""
     assert run("void main() { if (4 != 5) printInt(1); else printInt(0); }") == "1"
 
 
-def test_048():
+def test_047():
     """float equality"""
     assert run("void main() { if (1.5 == 1.5) printInt(1); else printInt(0); }") == "1"
 
 
 # ============================================================================
-# 6. Logical operators (049-054)
+# 6. Logical operators (048-053)
 # ============================================================================
 
-def test_049():
+def test_048():
     """logical AND both true"""
     assert run("void main() { if (1 < 2 && 2 < 3) printInt(1); else printInt(0); }") == "1"
 
 
-def test_050():
+def test_049():
     """logical AND one false"""
     assert run("void main() { if (1 < 2 && 5 < 3) printInt(1); else printInt(0); }") == "0"
 
 
-def test_051():
+def test_050():
     """logical OR false/true -> true"""
     assert run("void main() { if (5 < 3 || 1 < 2) printInt(1); else printInt(0); }") == "1"
 
 
-def test_052():
+def test_051():
     """logical OR both false"""
     assert run("void main() { if (5 < 3 || 9 < 3) printInt(1); else printInt(0); }") == "0"
 
 
-def test_053():
+def test_052():
     """logical NOT of true"""
     assert run("void main() { if (!(1 < 2)) printInt(1); else printInt(0); }") == "0"
 
 
-def test_054():
+def test_053():
     """logical NOT of false"""
     assert run("void main() { if (!(5 < 3)) printInt(1); else printInt(0); }") == "1"
 
 
 # ============================================================================
-# 7. Prefix / postfix (055-062)
+# 7. Prefix / postfix (054-061)
 # ============================================================================
 
-def test_055():
+def test_054():
     """prefix ++ returns new value and increments"""
     assert run("void main() { int x = 5; printInt(++x); printInt(x); }") == "66"
 
 
-def test_056():
+def test_055():
     """prefix -- returns new value and decrements"""
     assert run("void main() { int x = 5; printInt(--x); printInt(x); }") == "44"
 
 
-def test_057():
+def test_056():
     """postfix ++ returns old value and increments"""
     assert run("void main() { int x = 5; printInt(x++); printInt(x); }") == "56"
 
 
-def test_058():
+def test_057():
     """postfix -- returns old value and decrements"""
     assert run("void main() { int x = 5; printInt(x--); printInt(x); }") == "54"
 
 
-def test_059():
+def test_058():
     """unary plus has no effect"""
     assert run("void main() { printInt(+9); }") == "9"
 
 
-def test_060():
+def test_059():
     """double negation"""
     assert run("void main() { printInt(-(-12)); }") == "12"
 
 
-def test_061():
+def test_060():
     """double logical not"""
     assert run("void main() { int a = 1; if (!!( a > 0)) printInt(1); else printInt(0); }") == "1"
 
 
-def test_062():
+def test_061():
     """postfix ++ inside arithmetic: 10 + i++ uses old i, then i=2"""
     assert run("void main() { int i = 1; printInt(10 + i++); printInt(i); }") == "112"
 
 
 # ============================================================================
-# 8. If / else (063-070)
+# 8. If / else (062-069)
 # ============================================================================
 
-def test_063():
+def test_062():
     """if without else, true branch executes"""
     assert run('void main() { if (1 == 1) printString("T"); }') == "T"
 
 
-def test_064():
+def test_063():
     """if without else, false branch -> nothing printed"""
     assert run('void main() { if (1 == 2) printString("T"); printString("done"); }') == "done"
 
 
-def test_065():
+def test_064():
     """if-else taking else branch"""
     assert run('void main() { if (1 > 2) printString("A"); else printString("B"); }') == "B"
 
 
-def test_066():
+def test_065():
     """nested if"""
     assert run("""
         void main() {
@@ -390,7 +385,7 @@ def test_066():
     """) == "big"
 
 
-def test_067():
+def test_066():
     """else-if chain: first branch hits"""
     assert run("""
         void main() {
@@ -402,7 +397,7 @@ def test_067():
     """) == "one"
 
 
-def test_068():
+def test_067():
     """else-if chain: middle branch hits"""
     assert run("""
         void main() {
@@ -414,7 +409,7 @@ def test_068():
     """) == "two"
 
 
-def test_069():
+def test_068():
     """else-if chain: falls through to final else"""
     assert run("""
         void main() {
@@ -426,7 +421,7 @@ def test_069():
     """) == "other"
 
 
-def test_070():
+def test_069():
     """if with compound && condition"""
     assert run("""
         void main() {
@@ -438,10 +433,10 @@ def test_070():
 
 
 # ============================================================================
-# 9. While loops (071-076)
+# 9. While loops (070-075)
 # ============================================================================
 
-def test_071():
+def test_070():
     """simple while 0..2"""
     assert run("""
         void main() {
@@ -451,7 +446,7 @@ def test_071():
     """) == "012"
 
 
-def test_072():
+def test_071():
     """while condition false from start"""
     assert run("""
         void main() {
@@ -461,7 +456,7 @@ def test_072():
     """) == "done"
 
 
-def test_073():
+def test_072():
     """while with break"""
     assert run("""
         void main() {
@@ -475,7 +470,7 @@ def test_073():
     """) == "012"
 
 
-def test_074():
+def test_073():
     """while with continue: print only odd numbers"""
     assert run("""
         void main() {
@@ -489,7 +484,7 @@ def test_074():
     """) == "135"
 
 
-def test_075():
+def test_074():
     """nested while loops"""
     assert run("""
         void main() {
@@ -503,7 +498,7 @@ def test_075():
     """) == "00011011"
 
 
-def test_076():
+def test_075():
     """sum 1..10 with while"""
     assert run("""
         void main() {
@@ -515,10 +510,10 @@ def test_076():
 
 
 # ============================================================================
-# 10. For loops (077-084)
+# 10. For loops (076-083)
 # ============================================================================
 
-def test_077():
+def test_076():
     """standard for 0..4"""
     assert run("""
         void main() {
@@ -527,7 +522,7 @@ def test_077():
     """) == "01234"
 
 
-def test_078():
+def test_077():
     """for counting down"""
     assert run("""
         void main() {
@@ -536,7 +531,7 @@ def test_078():
     """) == "321"
 
 
-def test_079():
+def test_078():
     """for with break"""
     assert run("""
         void main() {
@@ -548,7 +543,7 @@ def test_079():
     """) == "012"
 
 
-def test_080():
+def test_079():
     """for with continue: print only even i"""
     assert run("""
         void main() {
@@ -560,7 +555,7 @@ def test_080():
     """) == "024"
 
 
-def test_081():
+def test_080():
     """nested for: 2x2 index pairs"""
     assert run("""
         void main() {
@@ -572,7 +567,7 @@ def test_081():
     """) == "00011011"
 
 
-def test_082():
+def test_081():
     """for with multiply update"""
     assert run("""
         void main() {
@@ -581,7 +576,7 @@ def test_082():
     """) == "124816"
 
 
-def test_083():
+def test_082():
     """for computing factorial of 5"""
     assert run("""
         void main() {
@@ -592,7 +587,7 @@ def test_083():
     """) == "120"
 
 
-def test_084():
+def test_083():
     """for init variable accessible after loop"""
     assert run("""
         void main() {
@@ -603,10 +598,10 @@ def test_084():
 
 
 # ============================================================================
-# 11. Switch (085-089)
+# 11. Switch (084-088)
 # ============================================================================
 
-def test_085():
+def test_084():
     """switch matches a case"""
     assert run("""
         void main() {
@@ -621,7 +616,7 @@ def test_085():
     """) == "two"
 
 
-def test_086():
+def test_085():
     """switch falls to default"""
     assert run("""
         void main() {
@@ -634,7 +629,7 @@ def test_086():
     """) == "other"
 
 
-def test_087():
+def test_086():
     """switch fall-through without break"""
     assert run("""
         void main() {
@@ -648,7 +643,7 @@ def test_087():
     """) == "AB"
 
 
-def test_088():
+def test_087():
     """switch no default, no match -> nothing printed before 'end'"""
     assert run("""
         void main() {
@@ -661,7 +656,7 @@ def test_088():
     """) == "end"
 
 
-def test_089():
+def test_088():
     """switch break exits switch but not enclosing for"""
     assert run("""
         void main() {
@@ -677,10 +672,10 @@ def test_089():
 
 
 # ============================================================================
-# 12. Functions (090-097)
+# 12. Functions (089-096)
 # ============================================================================
 
-def test_090():
+def test_089():
     """void function call"""
     assert run("""
         void greet() { printString("hi"); }
@@ -688,7 +683,7 @@ def test_090():
     """) == "hi"
 
 
-def test_091():
+def test_090():
     """int function with params"""
     assert run("""
         int add(int a, int b) { return a + b; }
@@ -696,7 +691,7 @@ def test_091():
     """) == "42"
 
 
-def test_092():
+def test_091():
     """float function"""
     assert run("""
         float half(float x) { return x / 2.0; }
@@ -704,7 +699,7 @@ def test_092():
     """) == "2.5"
 
 
-def test_093():
+def test_092():
     """recursion: factorial"""
     assert run("""
         int fact(int n) {
@@ -715,7 +710,7 @@ def test_093():
     """) == "720"
 
 
-def test_094():
+def test_093():
     """recursion: fibonacci"""
     assert run("""
         int fib(int n) {
@@ -726,7 +721,7 @@ def test_094():
     """) == "55"
 
 
-def test_095():
+def test_094():
     """two functions calling each other"""
     assert run("""
         int dbl(int n) { return n * 2; }
@@ -735,7 +730,7 @@ def test_095():
     """) == "12"
 
 
-def test_096():
+def test_095():
     """function returns string"""
     assert run("""
         string greet() { return "hello"; }
@@ -743,7 +738,7 @@ def test_096():
     """) == "hello"
 
 
-def test_097():
+def test_096():
     """void function with early return skips rest"""
     assert run("""
         void maybe(int n) {
@@ -755,10 +750,10 @@ def test_097():
 
 
 # ============================================================================
-# 13. Structs (098-105)
+# 13. Structs (097-104)
 # ============================================================================
 
-def test_098():
+def test_097():
     """simple struct literal + print members"""
     assert run("""
         struct Point { int x; int y; };
@@ -770,7 +765,7 @@ def test_098():
     """) == "34"
 
 
-def test_099():
+def test_098():
     """struct member sum"""
     assert run("""
         struct Point { int x; int y; };
@@ -781,7 +776,7 @@ def test_099():
     """) == "7"
 
 
-def test_100():
+def test_099():
     """struct member write"""
     assert run("""
         struct Box { int v; };
@@ -793,7 +788,7 @@ def test_100():
     """) == "99"
 
 
-def test_101():
+def test_100():
     """struct with float and string fields"""
     assert run("""
         struct Rec { float f; string s; };
@@ -805,7 +800,7 @@ def test_101():
     """) == "1.5hi"
 
 
-def test_102():
+def test_101():
     """nested struct literal"""
     assert run("""
         struct Inner { int v; };
@@ -818,7 +813,7 @@ def test_102():
     """) == "78"
 
 
-def test_103():
+def test_102():
     """struct as function parameter"""
     assert run("""
         struct Point { int x; int y; };
@@ -830,7 +825,7 @@ def test_103():
     """) == "30"
 
 
-def test_104():
+def test_103():
     """struct as function return value"""
     assert run("""
         struct Pair { int a; int b; };
@@ -843,7 +838,7 @@ def test_104():
     """) == "56"
 
 
-def test_105():
+def test_104():
     """modify nested struct field"""
     assert run("""
         struct Inner { int v; };
@@ -857,35 +852,35 @@ def test_105():
 
 
 # ============================================================================
-# 14. I/O built-ins (106-111)
+# 14. I/O built-ins (105-110)
 # ============================================================================
 
-def test_106():
+def test_105():
     """readInt -> printInt"""
     assert run("void main() { int x = readInt(); printInt(x); }", "123") == "123"
 
 
-def test_107():
+def test_106():
     """readInt used in arithmetic"""
     assert run("void main() { int x = readInt(); printInt(x * 2); }", "21") == "42"
 
 
-def test_108():
+def test_107():
     """readFloat -> printFloat"""
     assert run("void main() { float x = readFloat(); printFloat(x); }", "3.5") == "3.5"
 
 
-def test_109():
+def test_108():
     """readString -> printString"""
     assert run('void main() { string s = readString(); printString(s); }', "hello") == "hello"
 
 
-def test_110():
+def test_109():
     """read two ints and print their sum"""
     assert run("void main() { int a = readInt(); int b = readInt(); printInt(a + b); }", "10 32") == "42"
 
 
-def test_111():
+def test_110():
     """read int then branch on value"""
     assert run("""
         void main() {
@@ -897,10 +892,10 @@ def test_111():
 
 
 # ============================================================================
-# 15. Edge cases & complex scenarios (112-120)
+# 15. Edge cases & complex scenarios (111-119)
 # ============================================================================
 
-def test_112():
+def test_111():
     """variable shadowing in inner block"""
     assert run("""
         void main() {
@@ -911,7 +906,7 @@ def test_112():
     """) == "991"
 
 
-def test_113():
+def test_112():
     """empty block does nothing"""
     assert run("""
         void main() {
@@ -922,7 +917,7 @@ def test_113():
     """) == "beforeafter"
 
 
-def test_114():
+def test_113():
     """early return inside conditional branch"""
     assert run("""
         int choose(int n) {
@@ -936,7 +931,7 @@ def test_114():
     """) == "1-1"
 
 
-def test_115():
+def test_114():
     """compound boolean: (a>0) && (b>0 || c>0)"""
     assert run("""
         void main() {
@@ -947,7 +942,7 @@ def test_115():
     """) == "1"
 
 
-def test_116():
+def test_115():
     """compute average of 1..5 with for"""
     assert run("""
         void main() {
@@ -958,12 +953,12 @@ def test_116():
     """) == "3"
 
 
-def test_117():
+def test_116():
     """boundary: INT_MAX - 1 + 1"""
     assert run("void main() { printInt(2147483646 + 1); }") == "2147483647"
 
 
-def test_118():
+def test_117():
     """prefix ++ on struct member"""
     assert run("""
         struct C { int x; };
@@ -975,7 +970,7 @@ def test_118():
     """) == "1111"
 
 
-def test_119():
+def test_118():
     """postfix ++ on struct member"""
     assert run("""
         struct C { int x; };
@@ -987,7 +982,7 @@ def test_119():
     """) == "1011"
 
 
-def test_120():
+def test_119():
     """FizzBuzz 1..15"""
     assert run("""
         void main() {
@@ -1002,14 +997,14 @@ def test_120():
         }
     """) == "12F4BF78FB11F1314FB"
 
-def test_121():
+def test_120():
     assert run("""
         void main() {
             printInt(1 <= 1.2);
         }
     """) == "1"
 
-def test_122():
+def test_121():
     source = """
     int foo() {
         printInt(1);
@@ -1022,7 +1017,7 @@ def test_122():
     """
     assert run(source) == "111"
 
-def test_123():
+def test_122():
     source = """
     struct Point {
         int x;
@@ -1036,7 +1031,7 @@ def test_123():
     """
     assert run(source) == "2"
 
-def test_124():
+def test_123():
     source = """
     void main(){
         int a;
@@ -1049,7 +1044,7 @@ def test_124():
     """
     assert run(source) == "00.0"
 
-def test_125():
+def test_124():
     source = """
     struct Point {
         int x;
@@ -1065,7 +1060,7 @@ def test_125():
     """
     assert run(source) == "00.0"
 
-def test_126():
+def test_125():
     source = """
     foo(int a, int b) {return a + b;}
     void main(){
@@ -1075,40 +1070,40 @@ def test_126():
     """
     assert run(source) == "0"
 
-def test_127():
+def test_126():
     source = """
     void main() {
         // With auto and initialization
         auto x = readInt();
         auto y = readFloat();
         auto name = readString();
-    
+
         // With auto without initialization
         auto sum;
         sum = x + y;              // sum: float (inferred from first usage - assignment)
-    
+
         // With explicit type and initialization
         int count = 0;
         float total = 0.0;
         string greeting = "Hello, ";
-    
+
         // With explicit type without initialization
         int i;
         float f;
         i = readInt();            // assignment to int
         f = readFloat();          // assignment to float
-    
+
         printFloat(sum);
         printString(greeting);
         printString(name);
-    
+
         // Note: String concatenation is NOT supported
         // This is because + operator applies to int or float, not string
     }
     """
     assert run(source, "4\n0.2\nvotien\n1\n0.5") == "4.2Hello, votien"
 
-def test_128():
+def test_127():
     source = """
     int factorial(int n) {
         if (n <= 1) {
@@ -1117,7 +1112,7 @@ def test_128():
             return n * factorial(n - 1);
         }
     }
-    
+
     void main() {
         auto num = 10;
         auto result = factorial(num);
@@ -1126,7 +1121,7 @@ def test_128():
     """
     assert run(source) == "3628800"
 
-def test_129():
+def test_128():
     source = """
     int foo(int n){
         if (n <= 1){
@@ -1145,7 +1140,7 @@ def test_129():
     """
     assert run(source) == "1122"
 
-def test_130():
+def test_129():
     source = """
     void main() {
         int i = 2;
@@ -1157,7 +1152,7 @@ def test_130():
     """
     assert run(source) == "2"
 
-def test_131():
+def test_130():
     """struct declared without initializer, then member assigned"""
     assert run("""
         struct Point { int x; int y; };
@@ -1169,7 +1164,7 @@ def test_131():
     """) == "2"
 
 
-def test_132():
+def test_131():
     """primitive vars declared without initializer default to 0/0.0/empty-string"""
     assert run("""
         void main() {
@@ -1183,7 +1178,7 @@ def test_132():
     """) == "00.0"
 
 
-def test_133():
+def test_132():
     """struct fields without initializer default to 0/0.0/empty-string (not null)"""
     assert run("""
         struct Point { int x; float y; string z; };
@@ -1196,7 +1191,7 @@ def test_133():
     """) == "00.0"
 
 
-def test_134():
+def test_133():
     """nested struct field without initializer is auto-initialized (not null)"""
     assert run("""
         struct A { int x; };
@@ -1208,7 +1203,7 @@ def test_134():
     """) == "1"
 
 
-def test_135():
+def test_134():
     """auto var without init defaults to int, supports chained assignment"""
     assert run("""
         void main() {
@@ -1219,7 +1214,7 @@ def test_135():
     """) == "2"
 
 
-def test_136():
+def test_135():
     """function without explicit return type inferred as int"""
     assert run("""
         foo(int a, int b) { return a + b; }
@@ -1230,7 +1225,7 @@ def test_136():
     """) == "0"
 
 
-def test_137():
+def test_136():
     """auto var without init (IntType default) promoted to FloatType on first float assignment"""
     assert run("""
         void main() {
@@ -1253,7 +1248,7 @@ def test_137():
     """, "2 2.2 votien 0 0.0") == "4.2Hello, votien"
 
 
-def test_138():
+def test_137():
     """recursive function with if-else both returning (no goto after then-return)"""
     assert run("""
         int factorial(int n) {
@@ -1271,7 +1266,7 @@ def test_138():
     """) == "3628800"
 
 
-def test_139():
+def test_138():
     """switch with continue (jumps to enclosing while) and break (exits switch)"""
     assert run("""
         void main() {
@@ -1289,7 +1284,7 @@ def test_139():
     """) == "1133455"
 
 
-def test_140():
+def test_139():
     """var declared inside switch case/default must not leak into outer scope"""
     assert run("""
         void main() {
@@ -1302,7 +1297,7 @@ def test_140():
     """) == "2"
 
 
-def test_141():
+def test_140():
     """switch fall-through: var declared in case 5 is visible in default (shared scope)"""
     assert run("""
         void main() {
@@ -1316,7 +1311,7 @@ def test_141():
         }
     """) == "23"
 
-def test_142():
+def test_141():
     assert run("""
     void main(){
         int x = 5;
@@ -1328,6 +1323,173 @@ def test_142():
         }
     }
     """) == "5"
+
+def test_142():
+    source = """
+    void main(){
+        printString("ccc\\nccc");
+    }
+    """
+    assert run(source) == "ccc\nccc"
+
+def test_143():
+    source = """
+    struct Point {
+        int x;
+        int y;
+    };
+
+    void main() {
+        Point p1;
+        Point p2;
+
+        p2.x = 10;
+        p2.y = 20;
+
+        p1 = p2;   // copy struct
+
+        p2.x = 99;
+        p2.y = 88;
+
+        printInt(p1.x);
+        printInt(p1.y);
+        printInt(p2.x);
+        printInt(p2.y);
+    }
+    """
+    assert run(source) == "10209988"
+
+def test_144():
+    source = """
+    struct Point {
+        int x;
+        int y;
+        int c;
+        int d;
+    };
+    void main(){
+        Point p;
+        p.d = 2;
+        Point p1 = p;
+        p1.d = 3;
+        printInt(p.d);
+    }
+    """
+    assert run(source) == "2"
+
+def test_145():
+    source = """
+    struct Point {
+        int x;
+    };
+
+    void change(Point p){
+        p.x = 99;
+    }
+
+    void main(){
+        Point a;
+        a.x = 10;
+
+        change(a);
+
+        printInt(a.x);
+    }
+    """
+    assert run(source) == "10"
+
+def test_146():
+    assert run("""
+    struct C {
+        int x;
+    };
+
+    struct A {
+        C x;
+    };
+
+    struct B {
+        A a;
+    };
+
+    void main() {
+        B b;
+        b.a.x.x = 5;
+        printInt(++b.a.x.x);
+    }
+    """) == "6"
+
+def test_147():
+    source = """
+    foo(int a, float b){
+        return a + b;
+    }
+    void main(){
+        printInt(5.0 > foo(1,2.3));
+    }
+    """
+    assert run(source) == "1"
+
+def test_148():
+    source = """
+    void main() {
+        int i = 2;
+        switch (i) {
+            default: int i = 3;
+        }
+        printInt(i);
+    }
+    """
+    assert run(source) == "2"
+
+def test_149():
+    source = """
+    foo(int a, float b){
+            return a + b;
+    }
+    void main(){
+        auto x = foo(1, 2.5);
+        int g = x < 1.5;
+        printInt(g);
+        switch(g){
+            case 0:
+                printFloat(0.0);
+        }
+    }
+    """
+    assert run(source) == "00.0"
+
+def test_150():
+    assert run("""
+    struct Pair { int x; int y; };
+
+    Pair make(int a, int b) {
+        Pair p = {a, b};
+        return p;
+    }
+
+    void main() {
+        Pair p = make(8, 9);
+        printInt(p.x * p.y);
+    }
+    """) == "72"
+
+def test_151():
+    source = """
+    struct Inner {
+        int val;
+    };
+    struct Outer {
+        Inner inner;
+        int extra;
+    };
+    void main(){
+        Outer o = {{5}, 10};
+        printInt(o.inner.val + o.extra);
+    }
+    """
+    assert run(source) == "15"
+
 
 
 if __name__ == "__main__":
